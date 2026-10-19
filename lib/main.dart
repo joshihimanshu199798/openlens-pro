@@ -1,4 +1,5 @@
 import 'package:camera/camera.dart';
+import 'package:gal/gal.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -41,6 +42,7 @@ class _CameraScreenState extends State<CameraScreen> {
   List<CameraDescription> _cameras = [];
   int _cameraIndex = 0;
   bool _busy = false;
+  bool _recording = false;
   bool _grid = true;
   bool _showSettings = false;
   String _status = 'Starting camera…';
@@ -86,7 +88,7 @@ class _CameraScreenState extends State<CameraScreen> {
     final next = CameraController(
       _cameras[index],
       ResolutionPreset.max,
-      enableAudio: false,
+      enableAudio: true,
       imageFormatGroup: ImageFormatGroup.jpeg,
     );
     try {
@@ -117,12 +119,13 @@ class _CameraScreenState extends State<CameraScreen> {
     setState(() => _busy = true);
     try {
       final photo = await camera.takePicture();
+      await Gal.putImage(photo.path, album: 'OpenLens Pro');
       if (!mounted) return;
       setState(() {
         _lastPhoto = photo;
-        _status = 'Photo captured · ${photo.name}';
+        _status = 'Photo saved to gallery · ${photo.name}';
       });
-      _showMessage('Photo captured. Open the thumbnail to share from your gallery app.');
+      _showMessage('Photo saved to your gallery.');
     } catch (e) {
       if (mounted) {
         setState(() => _status = 'Capture failed: $e');
@@ -130,6 +133,59 @@ class _CameraScreenState extends State<CameraScreen> {
       }
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _toggleVideoRecording() async {
+    final camera = _controller;
+    if (camera == null || !camera.value.isInitialized || _busy) return;
+    if (_recording) {
+      setState(() => _busy = true);
+      try {
+        final video = await camera.stopVideoRecording();
+        await Gal.putVideo(video.path, album: 'OpenLens Pro');
+        if (!mounted) return;
+        setState(() {
+          _recording = false;
+          _status = 'Video saved to gallery · ${video.name}';
+        });
+        _showMessage('Video saved to your gallery.');
+      } catch (e) {
+        if (mounted) {
+          setState(() => _status = 'Could not save video: $e');
+          _showMessage('Video could not be saved. Please try again.');
+        }
+      } finally {
+        if (mounted) setState(() => _busy = false);
+      }
+      return;
+    }
+    try {
+      final microphone = await Permission.microphone.request();
+      if (!microphone.isGranted) {
+        _showMessage('Microphone permission is needed to record video with audio.');
+        return;
+      }
+      await camera.startVideoRecording();
+      if (mounted) {
+        setState(() {
+          _recording = true;
+          _status = 'Recording video…';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _status = 'Could not start recording: $e');
+        _showMessage('Video recording could not start on this camera.');
+      }
+    }
+  }
+
+  Future<void> _captureAction() async {
+    if (_mode == 'VIDEO') {
+      await _toggleVideoRecording();
+    } else {
+      await _takePhoto();
     }
   }
 
@@ -355,7 +411,7 @@ class _CameraScreenState extends State<CameraScreen> {
                         ),
                 ),
                 GestureDetector(
-                  onTap: _busy ? null : _takePhoto,
+                  onTap: _busy ? null : _captureAction,
                   child: Container(
                     width: 76,
                     height: 76,
@@ -376,7 +432,7 @@ class _CameraScreenState extends State<CameraScreen> {
                                 padding: EdgeInsets.all(17),
                                 child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
                               )
-                            : const Icon(Icons.camera_alt_rounded, color: Colors.black, size: 28),
+                            : Icon(_recording ? Icons.stop_rounded : (_mode == 'VIDEO' ? Icons.videocam_rounded : Icons.camera_alt_rounded), color: Colors.black, size: 28),
                       ),
                     ),
                   ),
@@ -470,8 +526,12 @@ class _CameraScreenState extends State<CameraScreen> {
 
   Widget _modeButton(String mode) => InkWell(
         onTap: () {
+          if (_recording && mode != 'VIDEO') {
+            _showMessage('Stop recording before changing modes.');
+            return;
+          }
           setState(() => _mode = mode);
-          if (mode == 'VIDEO') _showMessage('Video recording is planned for the next milestone; photo capture remains active.');
+          if (mode == 'VIDEO') _showMessage('Video mode ready. Tap the record control to start or stop.');
           if (mode == 'PRO') setState(() => _showSettings = true);
         },
         child: Container(
