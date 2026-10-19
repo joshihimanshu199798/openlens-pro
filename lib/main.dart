@@ -71,6 +71,111 @@ class _CameraScreenState extends State<CameraScreen> {
   double _gradeWarmth = 0;
   double _gradeTint = 0;
 
+  // Curated original recipes inspired by widely used film, portrait, cinematic,
+  // travel, street, monochrome, social, night, and product-grading aesthetics.
+  static final List<_SignaturePreset> _libraryPresets = [
+  _SignaturePreset('Portra Glow', 'Film look', Icons.camera_roll_rounded, 0.06, 1.0, FlashMode.off, category: 'Film', brightness: 0.03, contrast: 1.03, saturation: 0.92, warmth: 0.22, tint: 0.02),
+  _SignaturePreset('Gold 200', 'Film look', Icons.camera_roll_rounded, 0.10, 1.0, FlashMode.off, category: 'Film', brightness: 0.05, contrast: 1.12, saturation: 1.12, warmth: 0.35, tint: 0.01),
+  _SignaturePreset('Chrome Slide', 'Film look', Icons.camera_roll_rounded, 0.00, 1.0, FlashMode.off, category: 'Film', brightness: 0.00, contrast: 1.22, saturation: 1.22, warmth: 0.06, tint: -0.02),
+  _SignaturePreset('Soft Negative', 'Film look', Icons.camera_roll_rounded, 0.12, 1.0, FlashMode.off, category: 'Film', brightness: 0.06, contrast: 0.92, saturation: 0.88, warmth: 0.18, tint: 0.04),
+  _SignaturePreset('Classic 400', 'Film look', Icons.camera_roll_rounded, 0.02, 1.0, FlashMode.off, category: 'Film', brightness: 0.01, contrast: 1.14, saturation: 1.05, warmth: 0.12, tint: 0.00),
+  _SignaturePreset('Faded Film', 'Film look', Icons.camera_roll_rounded, 0.16, 1.0, FlashMode.off, category: 'Film', brightness: 0.08, contrast: 0.86, saturation: 0.78, warmth: 0.16, tint: 0.03),
+  _SignaturePreset('Ektar Pop', 'Film look', Icons.camera_roll_rounded, 0.00, 1.0, FlashMode.off, category: 'Film', brightness: 0.00, contrast: 1.20, saturation: 1.28, warmth: 0.04, tint: -0.01),
+  _SignaturePreset('Superia Green', 'Film look', Icons.camera_roll_rounded, 0.00, 1.0, FlashMode.off, category: 'Film', brightness: 0.00, contrast: 1.08, saturation: 1.06, warmth: -0.02, tint: -0.08),
+  _SignaturePreset('Warm Print', 'Film look', Icons.camera_roll_rounded, 0.08, 1.0, FlashMode.off, category: 'Film', brightness: 0.04, contrast: 1.05, saturation: 0.96, warmth: 0.28, tint: 0.02),
+  _SignaturePreset('Slide Punch', 'Film look', Icons.camera_roll_rounded, 0.00, 1.0, FlashMode.off, category: 'Film', brightness: 0.00, contrast: 1.28, saturation: 1.18, warmth: 0.03, tint: 0.00),
+  _SignaturePreset('Teal & Amber', 'Cinematic look', Icons.movie_filter_rounded, -0.04, 1.0, FlashMode.off, category: 'Cinematic', brightness: -0.02, contrast: 1.22, saturation: 0.94, warmth: 0.18, tint: -0.06),
+  _SignaturePreset('Blockbuster', 'Cinematic look', Icons.movie_filter_rounded, 0.00, 1.0, FlashMode.off, category: 'Cinematic', brightness: 0.00, contrast: 1.28, saturation: 1.10, warmth: 0.10, tint: -0.03),
+  _SignaturePreset('Indie Frame', 'Cinematic look', Icons.movie_filter_rounded, 0.10, 1.0, FlashMode.off, category: 'Cinematic', brightness: 0.05, contrast: 0.92, saturation: 0.82, warmth: 0.12, tint: 0.05),
+  _SignaturePreset('Bleach Bypass', 'Cinematic look', Icons.movie_filter_rounded, -0.06, 1.0, FlashMode.off, category: 'Cinematic', brightness: -0.03, contrast: 1.42, saturation: 0.62, warmth: -0.04, tint: 0.00),
+  _SignaturePreset('Desert Cinema', 'Cinematic look', Icons.movie_filter_rounded, 0.04, 1.0, FlashMode.off, category: 'Cinematic', brightness: 0.02, contrast: 1.16, saturation: 0.91, warmth: 0.31, tint: 0.02),
+  _SignaturePreset('Arctic Thriller', 'Cinematic look', Icons.movie_filter_rounded, -0.04, 1.0, FlashMode.off, category: 'Cinematic', brightness: -0.02, contrast: 1.18, saturation: 0.82, warmth: -0.25, tint: -0.02),
+  _SignaturePreset('Neo Noir', 'Cinematic look', Icons.movie_filter_rounded, -0.24, 1.0, FlashMode.off, category: 'Cinematic', brightness: -0.12, contrast: 1.38, saturation: 0.78, warmth: -0.08, tint: 0.01),
+  _SignaturePreset('Golden Scene', 'Cinematic look', Icons.movie_filter_rounded, 0.12, 1.0, FlashMode.off, category: 'Cinematic', brightness: 0.06, contrast: 1.10, saturation: 1.02, warmth: 0.32, tint: 0.02),
+  _SignaturePreset('Muted Drama', 'Cinematic look', Icons.movie_filter_rounded, -0.04, 1.0, FlashMode.off, category: 'Cinematic', brightness: -0.02, contrast: 1.16, saturation: 0.72, warmth: 0.02, tint: 0.03),
+  _SignaturePreset('Dream Sequence', 'Cinematic look', Icons.movie_filter_rounded, 0.16, 1.0, FlashMode.off, category: 'Cinematic', brightness: 0.08, contrast: 0.88, saturation: 0.86, warmth: 0.15, tint: 0.06),
+  _SignaturePreset('Natural Skin', 'Portrait look', Icons.face_retouching_natural_rounded, 0.08, 1.0, FlashMode.off, category: 'Portrait', brightness: 0.04, contrast: 0.98, saturation: 0.92, warmth: 0.08, tint: 0.01),
+  _SignaturePreset('Soft Portrait', 'Portrait look', Icons.face_retouching_natural_rounded, 0.16, 1.0, FlashMode.off, category: 'Portrait', brightness: 0.08, contrast: 0.88, saturation: 0.88, warmth: 0.12, tint: 0.03),
+  _SignaturePreset('Golden Skin', 'Portrait look', Icons.face_retouching_natural_rounded, 0.08, 1.0, FlashMode.off, category: 'Portrait', brightness: 0.04, contrast: 1.05, saturation: 1.00, warmth: 0.24, tint: 0.02),
+  _SignaturePreset('Editorial Clean', 'Portrait look', Icons.face_retouching_natural_rounded, 0.04, 1.0, FlashMode.off, category: 'Portrait', brightness: 0.02, contrast: 1.12, saturation: 0.94, warmth: 0.04, tint: 0.00),
+  _SignaturePreset('Pastel Portrait', 'Portrait look', Icons.face_retouching_natural_rounded, 0.18, 1.0, FlashMode.off, category: 'Portrait', brightness: 0.09, contrast: 0.90, saturation: 0.80, warmth: 0.10, tint: 0.05),
+  _SignaturePreset('Deep Skin Rich', 'Portrait look', Icons.face_retouching_natural_rounded, 0.02, 1.0, FlashMode.off, category: 'Portrait', brightness: 0.01, contrast: 1.16, saturation: 1.04, warmth: 0.12, tint: 0.02),
+  _SignaturePreset('Studio Neutral', 'Portrait look', Icons.face_retouching_natural_rounded, 0.00, 1.0, FlashMode.off, category: 'Portrait', brightness: 0.00, contrast: 1.08, saturation: 0.96, warmth: 0.00, tint: 0.00),
+  _SignaturePreset('Romantic Glow', 'Portrait look', Icons.face_retouching_natural_rounded, 0.20, 1.0, FlashMode.off, category: 'Portrait', brightness: 0.10, contrast: 0.90, saturation: 0.90, warmth: 0.20, tint: 0.04),
+  _SignaturePreset('Fashion Contrast', 'Portrait look', Icons.face_retouching_natural_rounded, -0.04, 1.0, FlashMode.off, category: 'Portrait', brightness: -0.02, contrast: 1.28, saturation: 1.02, warmth: 0.06, tint: -0.01),
+  _SignaturePreset('Monochrome Portrait', 'Portrait look', Icons.face_retouching_natural_rounded, 0.02, 1.0, FlashMode.off, category: 'Portrait', brightness: 0.01, contrast: 1.20, saturation: 0.00, warmth: 0.00, tint: 0.00),
+  _SignaturePreset('Alpine Clarity', 'Landscape & Travel look', Icons.landscape_rounded, 0.04, 1.0, FlashMode.off, category: 'Landscape & Travel', brightness: 0.02, contrast: 1.20, saturation: 1.16, warmth: -0.06, tint: -0.01),
+  _SignaturePreset('Tropical Aqua', 'Landscape & Travel look', Icons.landscape_rounded, 0.06, 1.0, FlashMode.off, category: 'Landscape & Travel', brightness: 0.03, contrast: 1.10, saturation: 1.24, warmth: 0.08, tint: -0.04),
+  _SignaturePreset('Desert Earth', 'Landscape & Travel look', Icons.landscape_rounded, 0.06, 1.0, FlashMode.off, category: 'Landscape & Travel', brightness: 0.03, contrast: 1.10, saturation: 0.96, warmth: 0.28, tint: 0.02),
+  _SignaturePreset('Iceland Blue', 'Landscape & Travel look', Icons.landscape_rounded, -0.04, 1.0, FlashMode.off, category: 'Landscape & Travel', brightness: -0.02, contrast: 1.18, saturation: 0.92, warmth: -0.24, tint: -0.02),
+  _SignaturePreset('Forest Depth', 'Landscape & Travel look', Icons.landscape_rounded, -0.08, 1.0, FlashMode.off, category: 'Landscape & Travel', brightness: -0.04, contrast: 1.22, saturation: 0.92, warmth: -0.06, tint: -0.05),
+  _SignaturePreset('Coastal Air', 'Landscape & Travel look', Icons.landscape_rounded, 0.16, 1.0, FlashMode.off, category: 'Landscape & Travel', brightness: 0.08, contrast: 0.92, saturation: 0.88, warmth: -0.06, tint: 0.02),
+  _SignaturePreset('Golden Hour', 'Landscape & Travel look', Icons.landscape_rounded, 0.16, 1.0, FlashMode.off, category: 'Landscape & Travel', brightness: 0.08, contrast: 1.04, saturation: 1.08, warmth: 0.36, tint: 0.02),
+  _SignaturePreset('Travel Vivid', 'Landscape & Travel look', Icons.landscape_rounded, 0.04, 1.0, FlashMode.off, category: 'Landscape & Travel', brightness: 0.02, contrast: 1.16, saturation: 1.30, warmth: 0.08, tint: 0.00),
+  _SignaturePreset('Misty Mountains', 'Landscape & Travel look', Icons.landscape_rounded, 0.12, 1.0, FlashMode.off, category: 'Landscape & Travel', brightness: 0.06, contrast: 0.86, saturation: 0.78, warmth: -0.10, tint: 0.02),
+  _SignaturePreset('City Explorer', 'Landscape & Travel look', Icons.landscape_rounded, 0.00, 1.0, FlashMode.off, category: 'Landscape & Travel', brightness: 0.00, contrast: 1.16, saturation: 1.08, warmth: 0.02, tint: -0.01),
+  _SignaturePreset('Tokyo Crosswalk', 'Street & Urban look', Icons.location_city_rounded, 0.00, 1.0, FlashMode.off, category: 'Street & Urban', brightness: 0.00, contrast: 1.20, saturation: 1.08, warmth: -0.04, tint: -0.03),
+  _SignaturePreset('Concrete Fade', 'Street & Urban look', Icons.location_city_rounded, 0.10, 1.0, FlashMode.off, category: 'Street & Urban', brightness: 0.05, contrast: 0.90, saturation: 0.78, warmth: -0.04, tint: 0.02),
+  _SignaturePreset('Urban Grit', 'Street & Urban look', Icons.location_city_rounded, -0.16, 1.0, FlashMode.off, category: 'Street & Urban', brightness: -0.08, contrast: 1.32, saturation: 0.92, warmth: -0.05, tint: 0.00),
+  _SignaturePreset('Street Chrome', 'Street & Urban look', Icons.location_city_rounded, 0.00, 1.0, FlashMode.off, category: 'Street & Urban', brightness: 0.00, contrast: 1.18, saturation: 1.20, warmth: -0.02, tint: -0.02),
+  _SignaturePreset('Rainy Avenue', 'Street & Urban look', Icons.location_city_rounded, -0.06, 1.0, FlashMode.off, category: 'Street & Urban', brightness: -0.03, contrast: 1.12, saturation: 0.78, warmth: -0.12, tint: 0.00),
+  _SignaturePreset('Market Colors', 'Street & Urban look', Icons.location_city_rounded, 0.06, 1.0, FlashMode.off, category: 'Street & Urban', brightness: 0.03, contrast: 1.10, saturation: 1.20, warmth: 0.10, tint: 0.01),
+  _SignaturePreset('Subway Green', 'Street & Urban look', Icons.location_city_rounded, -0.04, 1.0, FlashMode.off, category: 'Street & Urban', brightness: -0.02, contrast: 1.18, saturation: 0.92, warmth: -0.03, tint: -0.08),
+  _SignaturePreset('Cross Process', 'Street & Urban look', Icons.location_city_rounded, 0.02, 1.0, FlashMode.off, category: 'Street & Urban', brightness: 0.01, contrast: 1.20, saturation: 1.18, warmth: 0.02, tint: 0.08),
+  _SignaturePreset('Dusty Sidewalk', 'Street & Urban look', Icons.location_city_rounded, 0.04, 1.0, FlashMode.off, category: 'Street & Urban', brightness: 0.02, contrast: 0.96, saturation: 0.86, warmth: 0.10, tint: 0.01),
+  _SignaturePreset('Hard Sun Street', 'Street & Urban look', Icons.location_city_rounded, -0.04, 1.0, FlashMode.off, category: 'Street & Urban', brightness: -0.02, contrast: 1.34, saturation: 1.06, warmth: 0.04, tint: 0.00),
+  _SignaturePreset('Analog Memories', 'Vintage & Retro look', Icons.history_rounded, 0.14, 1.0, FlashMode.off, category: 'Vintage & Retro', brightness: 0.07, contrast: 0.88, saturation: 0.82, warmth: 0.18, tint: 0.03),
+  _SignaturePreset('Sepia Journal', 'Vintage & Retro look', Icons.history_rounded, 0.08, 1.0, FlashMode.off, category: 'Vintage & Retro', brightness: 0.04, contrast: 0.98, saturation: 0.48, warmth: 0.25, tint: 0.02),
+  _SignaturePreset('Polaroid Fade', 'Vintage & Retro look', Icons.history_rounded, 0.20, 1.0, FlashMode.off, category: 'Vintage & Retro', brightness: 0.10, contrast: 0.82, saturation: 0.76, warmth: 0.16, tint: 0.02),
+  _SignaturePreset('Retro Pop', 'Vintage & Retro look', Icons.history_rounded, 0.04, 1.0, FlashMode.off, category: 'Vintage & Retro', brightness: 0.02, contrast: 1.16, saturation: 1.20, warmth: 0.14, tint: 0.02),
+  _SignaturePreset('Old Newspaper', 'Vintage & Retro look', Icons.history_rounded, 0.04, 1.0, FlashMode.off, category: 'Vintage & Retro', brightness: 0.02, contrast: 1.12, saturation: 0.10, warmth: 0.02, tint: 0.00),
+  _SignaturePreset('70s Warmth', 'Vintage & Retro look', Icons.history_rounded, 0.12, 1.0, FlashMode.off, category: 'Vintage & Retro', brightness: 0.06, contrast: 0.96, saturation: 0.96, warmth: 0.32, tint: 0.02),
+  _SignaturePreset('80s Flash', 'Vintage & Retro look', Icons.history_rounded, 0.16, 1.0, FlashMode.off, category: 'Vintage & Retro', brightness: 0.08, contrast: 1.18, saturation: 1.18, warmth: 0.12, tint: 0.01),
+  _SignaturePreset('90s Disposable', 'Vintage & Retro look', Icons.history_rounded, 0.06, 1.0, FlashMode.off, category: 'Vintage & Retro', brightness: 0.03, contrast: 1.10, saturation: 1.08, warmth: 0.14, tint: 0.02),
+  _SignaturePreset('Matte Memories', 'Vintage & Retro look', Icons.history_rounded, 0.16, 1.0, FlashMode.off, category: 'Vintage & Retro', brightness: 0.08, contrast: 0.82, saturation: 0.82, warmth: 0.10, tint: 0.04),
+  _SignaturePreset('Retro Teal', 'Vintage & Retro look', Icons.history_rounded, 0.04, 1.0, FlashMode.off, category: 'Vintage & Retro', brightness: 0.02, contrast: 1.06, saturation: 0.88, warmth: 0.04, tint: -0.04),
+  _SignaturePreset('Silver Gelatin', 'Black & White look', Icons.tonality_rounded, 0.00, 1.0, FlashMode.off, category: 'Black & White', brightness: 0.00, contrast: 1.28, saturation: 0.00, warmth: 0.00, tint: 0.00),
+  _SignaturePreset('Classic Mono', 'Black & White look', Icons.tonality_rounded, 0.04, 1.0, FlashMode.off, category: 'Black & White', brightness: 0.02, contrast: 1.12, saturation: 0.00, warmth: 0.00, tint: 0.00),
+  _SignaturePreset('Noir Contrast', 'Black & White look', Icons.tonality_rounded, -0.16, 1.0, FlashMode.off, category: 'Black & White', brightness: -0.08, contrast: 1.48, saturation: 0.00, warmth: 0.00, tint: 0.00),
+  _SignaturePreset('Soft Mono', 'Black & White look', Icons.tonality_rounded, 0.16, 1.0, FlashMode.off, category: 'Black & White', brightness: 0.08, contrast: 0.86, saturation: 0.00, warmth: 0.00, tint: 0.00),
+  _SignaturePreset('Matte B&W', 'Black & White look', Icons.tonality_rounded, 0.16, 1.0, FlashMode.off, category: 'Black & White', brightness: 0.08, contrast: 0.82, saturation: 0.00, warmth: 0.00, tint: 0.00),
+  _SignaturePreset('Street Mono', 'Black & White look', Icons.tonality_rounded, -0.06, 1.0, FlashMode.off, category: 'Black & White', brightness: -0.03, contrast: 1.36, saturation: 0.00, warmth: 0.00, tint: 0.00),
+  _SignaturePreset('High Key Mono', 'Black & White look', Icons.tonality_rounded, 0.28, 1.0, FlashMode.off, category: 'Black & White', brightness: 0.14, contrast: 1.04, saturation: 0.00, warmth: 0.00, tint: 0.00),
+  _SignaturePreset('Low Key Mono', 'Black & White look', Icons.tonality_rounded, -0.30, 1.0, FlashMode.off, category: 'Black & White', brightness: -0.15, contrast: 1.28, saturation: 0.00, warmth: 0.00, tint: 0.00),
+  _SignaturePreset('Warm Monochrome', 'Black & White look', Icons.tonality_rounded, 0.06, 1.0, FlashMode.off, category: 'Black & White', brightness: 0.03, contrast: 1.10, saturation: 0.00, warmth: 0.12, tint: 0.00),
+  _SignaturePreset('Fine Art Mono', 'Black & White look', Icons.tonality_rounded, 0.08, 1.0, FlashMode.off, category: 'Black & White', brightness: 0.04, contrast: 1.18, saturation: 0.00, warmth: 0.00, tint: 0.00),
+  _SignaturePreset('Creator Bright', 'Social & Vibrant look', Icons.bolt_rounded, 0.20, 1.0, FlashMode.off, category: 'Social & Vibrant', brightness: 0.10, contrast: 1.04, saturation: 1.18, warmth: 0.08, tint: 0.00),
+  _SignaturePreset('Candy Colors', 'Social & Vibrant look', Icons.bolt_rounded, 0.12, 1.0, FlashMode.off, category: 'Social & Vibrant', brightness: 0.06, contrast: 1.00, saturation: 1.42, warmth: 0.10, tint: 0.03),
+  _SignaturePreset('Punchy Pop', 'Social & Vibrant look', Icons.bolt_rounded, 0.00, 1.0, FlashMode.off, category: 'Social & Vibrant', brightness: 0.00, contrast: 1.24, saturation: 1.42, warmth: 0.04, tint: 0.00),
+  _SignaturePreset('Pastel Feed', 'Social & Vibrant look', Icons.bolt_rounded, 0.20, 1.0, FlashMode.off, category: 'Social & Vibrant', brightness: 0.10, contrast: 0.88, saturation: 0.86, warmth: 0.12, tint: 0.04),
+  _SignaturePreset('Clean Influencer', 'Social & Vibrant look', Icons.bolt_rounded, 0.12, 1.0, FlashMode.off, category: 'Social & Vibrant', brightness: 0.06, contrast: 1.00, saturation: 1.04, warmth: 0.08, tint: 0.00),
+  _SignaturePreset('Summer Splash', 'Social & Vibrant look', Icons.bolt_rounded, 0.16, 1.0, FlashMode.off, category: 'Social & Vibrant', brightness: 0.08, contrast: 1.08, saturation: 1.32, warmth: 0.22, tint: -0.02),
+  _SignaturePreset('Electric Color', 'Social & Vibrant look', Icons.bolt_rounded, 0.00, 1.0, FlashMode.off, category: 'Social & Vibrant', brightness: 0.00, contrast: 1.20, saturation: 1.48, warmth: -0.02, tint: -0.04),
+  _SignaturePreset('Fresh Greens', 'Social & Vibrant look', Icons.bolt_rounded, 0.08, 1.0, FlashMode.off, category: 'Social & Vibrant', brightness: 0.04, contrast: 1.08, saturation: 1.16, warmth: -0.02, tint: -0.06),
+  _SignaturePreset('Peachy Glow', 'Social & Vibrant look', Icons.bolt_rounded, 0.16, 1.0, FlashMode.off, category: 'Social & Vibrant', brightness: 0.08, contrast: 0.92, saturation: 1.02, warmth: 0.24, tint: 0.04),
+  _SignaturePreset('Bold Thumbnail', 'Social & Vibrant look', Icons.bolt_rounded, 0.04, 1.0, FlashMode.off, category: 'Social & Vibrant', brightness: 0.02, contrast: 1.32, saturation: 1.34, warmth: 0.08, tint: 0.00),
+  _SignaturePreset('Neon Tokyo', 'Night & Neon look', Icons.nightlight_round, -0.16, 1.0, FlashMode.off, category: 'Night & Neon', brightness: -0.08, contrast: 1.28, saturation: 1.24, warmth: -0.12, tint: -0.04),
+  _SignaturePreset('Midnight Blue', 'Night & Neon look', Icons.nightlight_round, -0.24, 1.0, FlashMode.off, category: 'Night & Neon', brightness: -0.12, contrast: 1.22, saturation: 0.86, warmth: -0.24, tint: -0.02),
+  _SignaturePreset('Cyberpunk Magenta', 'Night & Neon look', Icons.nightlight_round, -0.08, 1.0, FlashMode.off, category: 'Night & Neon', brightness: -0.04, contrast: 1.20, saturation: 1.22, warmth: -0.02, tint: 0.14),
+  _SignaturePreset('Night Market', 'Night & Neon look', Icons.nightlight_round, 0.00, 1.0, FlashMode.off, category: 'Night & Neon', brightness: 0.00, contrast: 1.14, saturation: 1.18, warmth: 0.06, tint: -0.02),
+  _SignaturePreset('Blue Hour', 'Night & Neon look', Icons.nightlight_round, -0.04, 1.0, FlashMode.off, category: 'Night & Neon', brightness: -0.02, contrast: 1.12, saturation: 0.92, warmth: -0.18, tint: -0.01),
+  _SignaturePreset('Neon Rain', 'Night & Neon look', Icons.nightlight_round, -0.12, 1.0, FlashMode.off, category: 'Night & Neon', brightness: -0.06, contrast: 1.26, saturation: 1.12, warmth: -0.10, tint: 0.04),
+  _SignaturePreset('Warm Streetlamp', 'Night & Neon look', Icons.nightlight_round, 0.04, 1.0, FlashMode.off, category: 'Night & Neon', brightness: 0.02, contrast: 1.12, saturation: 0.96, warmth: 0.30, tint: 0.02),
+  _SignaturePreset('Club Lights', 'Night & Neon look', Icons.nightlight_round, -0.20, 1.0, FlashMode.off, category: 'Night & Neon', brightness: -0.10, contrast: 1.34, saturation: 1.30, warmth: -0.06, tint: 0.04),
+  _SignaturePreset('Moonlit Fog', 'Night & Neon look', Icons.nightlight_round, 0.08, 1.0, FlashMode.off, category: 'Night & Neon', brightness: 0.04, contrast: 0.88, saturation: 0.72, warmth: -0.18, tint: 0.02),
+  _SignaturePreset('Dark City', 'Night & Neon look', Icons.nightlight_round, -0.28, 1.0, FlashMode.off, category: 'Night & Neon', brightness: -0.14, contrast: 1.32, saturation: 0.82, warmth: -0.08, tint: 0.00),
+  _SignaturePreset('Cafe Warmth', 'Food & Product look', Icons.restaurant_rounded, 0.10, 1.0, FlashMode.off, category: 'Food & Product', brightness: 0.05, contrast: 1.04, saturation: 1.02, warmth: 0.22, tint: 0.01),
+  _SignaturePreset('Fresh Plate', 'Food & Product look', Icons.restaurant_rounded, 0.16, 1.0, FlashMode.off, category: 'Food & Product', brightness: 0.08, contrast: 1.02, saturation: 1.12, warmth: 0.06, tint: 0.00),
+  _SignaturePreset('Bakery Gold', 'Food & Product look', Icons.restaurant_rounded, 0.10, 1.0, FlashMode.off, category: 'Food & Product', brightness: 0.05, contrast: 1.10, saturation: 1.06, warmth: 0.30, tint: 0.01),
+  _SignaturePreset('Menu Clean', 'Food & Product look', Icons.restaurant_rounded, 0.16, 1.0, FlashMode.off, category: 'Food & Product', brightness: 0.08, contrast: 0.96, saturation: 0.98, warmth: 0.04, tint: 0.00),
+  _SignaturePreset('Rich Espresso', 'Food & Product look', Icons.restaurant_rounded, -0.04, 1.0, FlashMode.off, category: 'Food & Product', brightness: -0.02, contrast: 1.24, saturation: 0.90, warmth: 0.16, tint: 0.01),
+  _SignaturePreset('Dessert Pop', 'Food & Product look', Icons.restaurant_rounded, 0.12, 1.0, FlashMode.off, category: 'Food & Product', brightness: 0.06, contrast: 1.08, saturation: 1.24, warmth: 0.14, tint: 0.02),
+  _SignaturePreset('Product White', 'Food & Product look', Icons.restaurant_rounded, 0.24, 1.0, FlashMode.off, category: 'Food & Product', brightness: 0.12, contrast: 0.92, saturation: 0.94, warmth: 0.00, tint: 0.00),
+  _SignaturePreset('Moody Restaurant', 'Food & Product look', Icons.restaurant_rounded, -0.16, 1.0, FlashMode.off, category: 'Food & Product', brightness: -0.08, contrast: 1.26, saturation: 0.82, warmth: 0.12, tint: 0.00),
+  _SignaturePreset('Farm Fresh', 'Food & Product look', Icons.restaurant_rounded, 0.08, 1.0, FlashMode.off, category: 'Food & Product', brightness: 0.04, contrast: 1.04, saturation: 1.10, warmth: -0.02, tint: -0.04),
+  _SignaturePreset('Luxury Gold', 'Food & Product look', Icons.restaurant_rounded, 0.04, 1.0, FlashMode.off, category: 'Food & Product', brightness: 0.02, contrast: 1.18, saturation: 0.96, warmth: 0.24, tint: 0.00),
+  ];
+
   // Original OpenLens presets use real camera controls supported by the device.
   static const List<_SignaturePreset> _presets = [
     _SignaturePreset('Auto', 'Balanced', Icons.auto_awesome_rounded, 0.0, 1.0, FlashMode.off),
@@ -494,6 +599,15 @@ class _CameraScreenState extends State<CameraScreen> {
               ),
             ),
             IconButton(
+              tooltip: 'Browse preset library',
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => _PresetLibraryPage(
+                presets: [..._presets, ..._libraryPresets, ..._customPresets],
+                activePreset: _activePreset,
+                onApply: (preset) { Navigator.of(context).pop(); _applyPreset(preset); },
+              ))),
+              icon: const Icon(Icons.auto_awesome_mosaic_rounded, color: Color(0xFFB8F36B)),
+            ),
+            IconButton(
               tooltip: 'Composition grid',
               onPressed: () => setState(() => _grid = !_grid),
               icon: Icon(_grid ? Icons.grid_on_rounded : Icons.grid_off_rounded),
@@ -825,14 +939,15 @@ class _SignaturePreset {
   final String name;
   final String hint;
   final IconData icon;
+  final String category;
   final double exposure;
   final double zoomFactor;
   final FlashMode flash;
   final double brightness, contrast, saturation, warmth, tint;
   const _SignaturePreset(this.name, this.hint, this.icon, this.exposure, this.zoomFactor, this.flash,
-    {this.brightness = 0, this.contrast = 1, this.saturation = 1, this.warmth = 0, this.tint = 0});
+    {this.category = 'Signature', this.brightness = 0, this.contrast = 1, this.saturation = 1, this.warmth = 0, this.tint = 0});
 
-  Map<String, dynamic> toJson() => {'name':name,'hint':hint,'brightness':brightness,'contrast':contrast,'saturation':saturation,'warmth':warmth,'tint':tint,'exposure':exposure,'zoomFactor':zoomFactor,'flash':flash.name};
+  Map<String, dynamic> toJson() => {'name':name,'hint':hint,'category':category,'brightness':brightness,'contrast':contrast,'saturation':saturation,'warmth':warmth,'tint':tint,'exposure':exposure,'zoomFactor':zoomFactor,'flash':flash.name};
 
   factory _SignaturePreset.fromJson(Map<String, dynamic> json) {
     final name = (json['name'] as String?)?.trim() ?? '';
@@ -846,7 +961,125 @@ class _SignaturePreset {
     final flash = FlashMode.values.firstWhere((v) => v.name == flashName, orElse: () => FlashMode.off);
     return _SignaturePreset(name, (json['hint'] as String?) ?? 'Imported grade', Icons.palette_outlined,
       number('exposure',0,-4,4), number('zoomFactor',1,1,4), flash,
-      brightness:number('brightness',0,-0.35,0.35), contrast:number('contrast',1,0.5,1.8),
+      category: (json['category'] as String?) ?? 'Imported', brightness:number('brightness',0,-0.35,0.35), contrast:number('contrast',1,0.5,1.8),
       saturation:number('saturation',1,0,2), warmth:number('warmth',0,-1,1), tint:number('tint',0,-1,1));
+  }
+}
+
+
+class _PresetLibraryPage extends StatefulWidget {
+  const _PresetLibraryPage({required this.presets, required this.activePreset, required this.onApply});
+  final List<_SignaturePreset> presets;
+  final String activePreset;
+  final ValueChanged<_SignaturePreset> onApply;
+
+  @override
+  State<_PresetLibraryPage> createState() => _PresetLibraryPageState();
+}
+
+class _PresetLibraryPageState extends State<_PresetLibraryPage> {
+  String _category = 'All';
+  String _query = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final categories = <String>['All', ...widget.presets.map((p) => p.category).toSet().where((c) => c != 'Signature').toList()..sort()];
+    final filtered = widget.presets.where((p) =>
+      (_category == 'All' || p.category == _category) &&
+      ('${p.name} ${p.hint} ${p.category}'.toLowerCase().contains(_query.toLowerCase()))).toList();
+    return Scaffold(
+      appBar: AppBar(
+        title: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('PRESET LIBRARY', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2, fontSize: 16)),
+          Text('100+ curated colour grades', style: TextStyle(fontSize: 11, color: Colors.white60)),
+        ]),
+        backgroundColor: const Color(0xFF080A0C),
+      ),
+      body: Column(children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
+          child: TextField(
+            onChanged: (value) => setState(() => _query = value),
+            decoration: InputDecoration(
+              hintText: 'Search presets, moods, categories…',
+              prefixIcon: const Icon(Icons.search_rounded),
+              filled: true,
+              fillColor: const Color(0xFF171C1F),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+              isDense: true,
+            ),
+          ),
+        ),
+        SizedBox(
+          height: 48,
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            scrollDirection: Axis.horizontal,
+            children: categories.map((category) => Padding(
+              padding: const EdgeInsets.only(right: 7),
+              child: ChoiceChip(
+                label: Text(category),
+                selected: _category == category,
+                onSelected: (_) => setState(() => _category = category),
+                selectedColor: const Color(0xFFB8F36B),
+                labelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
+                  color: _category == category ? Colors.black : Colors.white),
+              ),
+            )).toList(),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: Row(children: [
+            Text('${filtered.length} PRESETS', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.3, color: Color(0xFFB8F36B))),
+            const Spacer(),
+            const Text('Tap to apply', style: TextStyle(fontSize: 10, color: Colors.white54)),
+          ]),
+        ),
+        Expanded(
+          child: filtered.isEmpty
+            ? const Center(child: Text('No presets match your search.'))
+            : GridView.builder(
+                padding: const EdgeInsets.fromLTRB(12, 2, 12, 18),
+                itemCount: filtered.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 1.55,
+                ),
+                itemBuilder: (context, index) {
+                  final preset = filtered[index];
+                  final selected = preset.name == widget.activePreset;
+                  return Material(
+                    color: selected ? const Color(0xFF27331A) : const Color(0xFF151A1D),
+                    borderRadius: BorderRadius.circular(16),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () => widget.onApply(preset),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: selected ? const Color(0xFFB8F36B) : const Color(0xFF2C3337)),
+                        ),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Row(children: [
+                            Icon(preset.icon, size: 19, color: const Color(0xFFB8F36B)),
+                            const Spacer(),
+                            if (selected) const Icon(Icons.check_circle_rounded, size: 16, color: Color(0xFFB8F36B)),
+                          ]),
+                          const Spacer(),
+                          Text(preset.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
+                          const SizedBox(height: 3),
+                          Text(preset.category.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 9, color: Colors.white54, letterSpacing: .7)),
+                        ]),
+                      ),
+                    ),
+                  );
+                },
+              ),
+        ),
+      ]),
+    );
   }
 }
