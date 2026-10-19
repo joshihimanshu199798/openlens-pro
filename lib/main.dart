@@ -261,7 +261,7 @@ class _CameraScreenState extends State<CameraScreen> {
         _zoom = targetZoom;
         _showSettings = false;
       });
-      _showMessage(preset.name + ' preset applied.');
+      _showMessage('${preset.name} preset applied.');
     } catch (_) {
       _showMessage('This preset could not be fully applied on this camera.');
     }
