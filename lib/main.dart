@@ -73,7 +73,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
   // Curated original recipes inspired by widely used film, portrait, cinematic,
   // travel, street, monochrome, social, night, and product-grading aesthetics.
-  static final List<_SignaturePreset> _libraryPresets = [
+  static const List<_SignaturePreset> _libraryPresets = [
   _SignaturePreset('Portra Glow', 'Film look', Icons.camera_roll_rounded, 0.06, 1.0, FlashMode.off, category: 'Film', brightness: 0.03, contrast: 1.03, saturation: 0.92, warmth: 0.22, tint: 0.02),
   _SignaturePreset('Gold 200', 'Film look', Icons.camera_roll_rounded, 0.10, 1.0, FlashMode.off, category: 'Film', brightness: 0.05, contrast: 1.12, saturation: 1.12, warmth: 0.35, tint: 0.01),
   _SignaturePreset('Chrome Slide', 'Film look', Icons.camera_roll_rounded, 0.00, 1.0, FlashMode.off, category: 'Film', brightness: 0.00, contrast: 1.22, saturation: 1.22, warmth: 0.06, tint: -0.02),
