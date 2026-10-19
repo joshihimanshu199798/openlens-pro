@@ -983,7 +983,8 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final categories = <String>['All', ...widget.presets.map((p) => p.category).toSet().where((c) => c != 'Signature').toList()..sort()];
+    final categoryNames = widget.presets.map((p) => p.category).where((c) => c != 'Signature').toSet().toList()..sort();
+    final categories = <String>['All', ...categoryNames];
     final filtered = widget.presets.where((p) =>
       (_category == 'All' || p.category == _category) &&
       ('${p.name} ${p.hint} ${p.category}'.toLowerCase().contains(_query.toLowerCase()))).toList();
