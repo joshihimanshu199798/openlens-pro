@@ -183,8 +183,8 @@ class _CameraScreenState extends State<CameraScreen> {
     if (box == null) return;
     final local = box.globalToLocal(details.globalPosition);
     final point = Offset(
-      (local.dx / box.size.width).clamp(0.0, 1.0),
-      (local.dy / box.size.height).clamp(0.0, 1.0),
+      (local.dx / box.size.width).clamp(0.0, 1.0).toDouble(),
+      (local.dy / box.size.height).clamp(0.0, 1.0).toDouble(),
     );
     try {
       await camera.setFocusPoint(point);
@@ -336,7 +336,7 @@ class _CameraScreenState extends State<CameraScreen> {
             ),
             if (_maxZoom > _minZoom)
               Slider(
-                value: _zoom.clamp(_minZoom, _maxZoom),
+                value: _zoom.clamp(_minZoom, _maxZoom).toDouble(),
                 min: _minZoom,
                 max: _maxZoom,
                 onChanged: _setZoom,
@@ -438,7 +438,7 @@ class _CameraScreenState extends State<CameraScreen> {
                 Text(_minExposure.toStringAsFixed(1), style: const TextStyle(fontSize: 10)),
                 Expanded(
                   child: Slider(
-                    value: _exposure.clamp(_minExposure, _maxExposure),
+                    value: _exposure.clamp(_minExposure, _maxExposure).toDouble(),
                     min: _minExposure,
                     max: _maxExposure > _minExposure ? _maxExposure : _minExposure + 0.01,
                     onChanged: _setExposure,
