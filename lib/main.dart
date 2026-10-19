@@ -173,7 +173,7 @@ class _CameraScreenState extends State<CameraScreen> {
       await prefs.setString(_customPresetsKey, jsonEncode(next.map((p) => p.toJson()).toList()));
       if (!mounted) return;
       setState(() => _customPresets = next);
-      _showMessage('Imported \${imported.length} custom preset(s).');
+      _showMessage('Imported ${imported.length} custom preset(s).');
     } catch (_) { _showMessage('Import failed. Choose a valid OpenLens JSON preset file.'); }
   }
 
@@ -190,7 +190,8 @@ class _CameraScreenState extends State<CameraScreen> {
       await showDialog<void>(context: context, builder: (context) => Dialog.fullscreen(child: Scaffold(
         appBar: AppBar(title: const Text('GALLERY PREVIEW'), actions: [IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close))]),
         body: Center(child: InteractiveViewer(child: ColorFiltered(colorFilter: ColorFilter.matrix(_gradeMatrix), child: Image.file(File(picked.path), fit: BoxFit.contain)))),
-        bottomNavigationBar: SafeArea(child: Padding(padding: const EdgeInsets.all(16), child: Text('Previewing with \$_activePreset grade. Original gallery file is unchanged.', textAlign: TextAlign.center))),
+        // ignore: prefer_const_constructors
+        bottomNavigationBar: SafeArea(child: Padding(padding: const EdgeInsets.all(16), child: Text('Previewing with $_activePreset grade. Original gallery file is unchanged.', textAlign: TextAlign.center))),
       )));
     } catch (_) { _showMessage('Could not open the gallery. Check photo access and try again.'); }
   }
