@@ -28,3 +28,7 @@ flutter build apk --release
 ```
 
 This is a prototype, not a verified production camera app. Test on your device before relying on it.
+
+
+## Build status
+The automated Android build runs on pushes to `main` and can also be started manually from the repository's Actions tab.
