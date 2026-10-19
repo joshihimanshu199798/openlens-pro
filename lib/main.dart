@@ -126,17 +126,99 @@ class _CameraScreenState extends State<CameraScreen> {
     }
   }
 
+
+  List<_SignaturePreset> get _allPresets => [..._presets, ..._customPresets];
+
+  Future<void> _loadCustomPresets() async {
+    final prefs = await SharedPreferences.getInstance();
+    final encoded = prefs.getString(_customPresetsKey);
+    if (encoded == null || encoded.isEmpty) return;
+    try {
+      final list = (jsonDecode(encoded) as List<dynamic>).map((item) =>
+        _SignaturePreset.fromJson(Map<String, dynamic>.from(item as Map))).toList();
+      if (mounted) setState(() => _customPresets = list);
+    } catch (_) { _showMessage('Saved custom presets could not be loaded.'); }
+  }
+
+  Future<void> _importCustomPreset() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['json'], withData: true);
+      if (result == null || result.files.isEmpty) return;
+      final file = result.files.single;
+      final bytes = file.bytes ?? (file.path == null ? null : await File(file.path!).readAsBytes());
+      if (bytes == null) throw const FormatException();
+      final decoded = jsonDecode(utf8.decode(bytes));
+      final entries = decoded is Map && decoded['presets'] is List ? decoded['presets'] as List : decoded is List ? decoded : [decoded];
+      final imported = entries.map((entry) => _SignaturePreset.fromJson(Map<String, dynamic>.from(entry as Map))).toList();
+      if (imported.isEmpty || imported.length > 30) throw const FormatException();
+      final names = <String>{..._presets.map((p) => p.name.toLowerCase()), ..._customPresets.map((p) => p.name.toLowerCase())};
+      for (final preset in imported) { if (!names.add(preset.name.toLowerCase())) throw const FormatException(); }
+      final next = [..._customPresets, ...imported];
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_customPresetsKey, jsonEncode(next.map((p) => p.toJson()).toList()));
+      if (!mounted) return;
+      setState(() => _customPresets = next);
+      _showMessage('Imported \${imported.length} custom preset(s).');
+    } catch (_) { _showMessage('Import failed. Choose a valid OpenLens JSON preset file.'); }
+  }
+
+  Future<void> _exportPresetFormat() async {
+    final sample = {'format':'openlens-grade-v1','presets':[{'name':'My Film','brightness':0.02,'contrast':1.12,'saturation':0.9,'warmth':0.25,'tint':0.03,'exposure':0.0,'zoomFactor':1.0,'flash':'off'}]};
+    await Clipboard.setData(ClipboardData(text: const JsonEncoder.withIndent('  ').convert(sample)));
+    _showMessage('OpenLens JSON preset template copied to clipboard.');
+  }
+
+  Future<void> _openGalleryPreview() async {
+    try {
+      final picked = await ImagePicker().pickImage(source: ImageSource.gallery, requestFullMetadata: false);
+      if (picked == null || !mounted) return;
+      await showDialog<void>(context: context, builder: (context) => Dialog.fullscreen(child: Scaffold(
+        appBar: AppBar(title: const Text('GALLERY PREVIEW'), actions: [IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close))]),
+        body: Center(child: InteractiveViewer(child: ColorFiltered(colorFilter: ColorFilter.matrix(_gradeMatrix), child: Image.file(File(picked.path), fit: BoxFit.contain)))),
+        bottomNavigationBar: SafeArea(child: Padding(padding: const EdgeInsets.all(16), child: Text('Previewing with \$_activePreset grade. Original gallery file is unchanged.', textAlign: TextAlign.center))),
+      )));
+    } catch (_) { _showMessage('Could not open the gallery. Check photo access and try again.'); }
+  }
+
+  List<double> get _gradeMatrix {
+    final sat = _gradeSaturation, c = _gradeContrast;
+    final offset = _gradeBrightness * 255 + (1 - c) * 128;
+    const lr = 0.213, lg = 0.715, lb = 0.072;
+    final a = (1 - sat) * lr, d = (1 - sat) * lg, e = (1 - sat) * lb;
+    final warm = _gradeWarmth * 35, tint = _gradeTint * 22;
+    return [(a+sat)*c,d*c,e*c,0,offset+warm, a*c,(d+sat)*c,e*c,0,offset+tint, a*c,d*c,(e+sat)*c,0,offset-warm-tint*0.35, 0,0,0,1,0];
+  }
+
+  Future<void> _applyGradeToFile(String sourcePath, String outputPath) async {
+    final decoded = img.decodeImage(await File(sourcePath).readAsBytes());
+    if (decoded == null) throw const FormatException('Image could not be decoded');
+    for (final px in decoded) {
+      final r = px.r.toDouble(), g = px.g.toDouble(), b = px.b.toDouble();
+      final luma = 0.213*r + 0.715*g + 0.072*b;
+      final rr = luma + (r-luma)*_gradeSaturation, gg = luma + (g-luma)*_gradeSaturation, bb = luma + (b-luma)*_gradeSaturation;
+      px.r = ((rr-128)*_gradeContrast+128+_gradeBrightness*255+_gradeWarmth*35).clamp(0,255).round();
+      px.g = ((gg-128)*_gradeContrast+128+_gradeBrightness*255+_gradeTint*22).clamp(0,255).round();
+      px.b = ((bb-128)*_gradeContrast+128+_gradeBrightness*255-_gradeWarmth*35-_gradeTint*8).clamp(0,255).round();
+    }
+    await File(outputPath).writeAsBytes(img.encodeJpg(decoded, quality: 94), flush: true);
+  }
+
   Future<void> _takePhoto() async {
     final camera = _controller;
     if (camera == null || !camera.value.isInitialized || _busy) return;
     setState(() => _busy = true);
     try {
       final photo = await camera.takePicture();
-      await Gal.putImage(photo.path, album: 'OpenLens Pro');
+      var savedPath = photo.path;
+      if (_activePreset != 'Auto' || _gradeBrightness != 0 || _gradeContrast != 1 || _gradeSaturation != 1 || _gradeWarmth != 0 || _gradeTint != 0) {
+        savedPath = '${photo.path}.graded.jpg';
+        await _applyGradeToFile(photo.path, savedPath);
+      }
+      await Gal.putImage(savedPath, album: 'OpenLens Pro');
       if (!mounted) return;
       setState(() {
-        _lastPhoto = photo;
-        _status = 'Photo saved to gallery · ${photo.name}';
+        _lastPhoto = XFile(savedPath);
+        _status = 'Graded photo saved to gallery · ${photo.name}';
       });
       _showMessage('Photo saved to your gallery.');
     } catch (e) {
@@ -259,6 +341,11 @@ class _CameraScreenState extends State<CameraScreen> {
         _activePreset = preset.name;
         _exposure = targetExposure;
         _zoom = targetZoom;
+        _gradeBrightness = preset.brightness;
+        _gradeContrast = preset.contrast;
+        _gradeSaturation = preset.saturation;
+        _gradeWarmth = preset.warmth;
+        _gradeTint = preset.tint;
         _showSettings = false;
       });
       _showMessage('${preset.name} preset applied.');
@@ -327,7 +414,7 @@ class _CameraScreenState extends State<CameraScreen> {
                     GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTapDown: (details) => _tapToFocus(details, context),
-                      child: CameraPreview(camera),
+                      child: ColorFiltered(colorFilter: ColorFilter.matrix(_gradeMatrix), child: CameraPreview(camera)),
                     )
                   else
                     _cameraPlaceholder(),
@@ -455,15 +542,7 @@ class _CameraScreenState extends State<CameraScreen> {
             const SizedBox(height: 4),
             Row(
               children: [
-                Expanded(
-                  child: _lastPhoto == null
-                      ? const Icon(Icons.photo_library_outlined, color: Colors.white54, size: 28)
-                      : IconButton(
-                          tooltip: 'Last captured photo path',
-                          onPressed: () => _showMessage('Saved to: ${_lastPhoto!.path}'),
-                          icon: const Icon(Icons.photo, color: Color(0xFFB8F36B), size: 28),
-                        ),
-                ),
+                Expanded(child: IconButton(tooltip: 'Preview a photo from gallery', onPressed: _openGalleryPreview, icon: const Icon(Icons.photo_library_outlined, color: Color(0xFFB8F36B), size: 28))),
                 GestureDetector(
                   onTap: _busy ? null : _captureAction,
                   child: Container(
@@ -531,7 +610,7 @@ class _CameraScreenState extends State<CameraScreen> {
           children: [
             Row(
               children: [
-                const Text('SIGNATURE PRESETS',
+                const Text('SIGNATURE PRESETS · COLOUR GRADING',
                     style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.4)),
                 const Spacer(),
                 Text(_activePreset.toUpperCase(),
@@ -543,10 +622,11 @@ class _CameraScreenState extends State<CameraScreen> {
               height: 58,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                itemCount: _presets.length,
+                itemCount: _allPresets.length + 1,
                 separatorBuilder: (_, __) => const SizedBox(width: 7),
                 itemBuilder: (context, index) {
-                  final preset = _presets[index];
+                  if (index == _allPresets.length) return InkWell(borderRadius: BorderRadius.circular(13), onTap: _importCustomPreset, child: Container(width: 82, decoration: BoxDecoration(color: const Color(0xFF1A2023), borderRadius: BorderRadius.circular(13), border: Border.all(color: const Color(0xFFB8F36B))), child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.add_rounded, color: Color(0xFFB8F36B), size: 19), SizedBox(height: 3), Text('IMPORT', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800))])));
+                  final preset = _allPresets[index];
                   final selected = preset.name == _activePreset;
                   return InkWell(
                     borderRadius: BorderRadius.circular(13),
@@ -621,6 +701,12 @@ class _CameraScreenState extends State<CameraScreen> {
                 Text(_exposure.toStringAsFixed(1), style: const TextStyle(fontSize: 10)),
               ],
             ),
+            Row(children: [Expanded(child: OutlinedButton.icon(onPressed: _importCustomPreset, icon: const Icon(Icons.file_open_rounded, size: 16), label: const Text('Import preset JSON'))), const SizedBox(width: 8), Expanded(child: OutlinedButton.icon(onPressed: _exportPresetFormat, icon: const Icon(Icons.content_copy_rounded, size: 16), label: const Text('Preset template')))]),
+            _gradeSlider('Brightness', _gradeBrightness, -0.35, 0.35, (v) => setState(() { _gradeBrightness = v; _activePreset = 'Custom'; })),
+            _gradeSlider('Contrast', _gradeContrast, 0.5, 1.8, (v) => setState(() { _gradeContrast = v; _activePreset = 'Custom'; })),
+            _gradeSlider('Saturation', _gradeSaturation, 0, 2, (v) => setState(() { _gradeSaturation = v; _activePreset = 'Custom'; })),
+            _gradeSlider('Warmth', _gradeWarmth, -1, 1, (v) => setState(() { _gradeWarmth = v; _activePreset = 'Custom'; })),
+            _gradeSlider('Tint', _gradeTint, -1, 1, (v) => setState(() { _gradeTint = v; _activePreset = 'Custom'; })),
             const Text('Tap any point in the preview to set focus/exposure when supported.',
                 style: TextStyle(fontSize: 11, color: Colors.white60)),
             const SizedBox(height: 4),
@@ -629,6 +715,8 @@ class _CameraScreenState extends State<CameraScreen> {
           ],
         ),
       );
+
+  Widget _gradeSlider(String label, double value, double min, double max, ValueChanged<double> onChanged) => Padding(padding: const EdgeInsets.only(top: 2), child: Row(children: [SizedBox(width: 78, child: Text(label, style: const TextStyle(fontSize: 11, color: Colors.white70))), Expanded(child: Slider(value: value.clamp(min,max).toDouble(), min: min, max: max, onChanged: onChanged, activeColor: const Color(0xFFB8F36B))), SizedBox(width: 38, child: Text(value.toStringAsFixed(2), textAlign: TextAlign.end, style: const TextStyle(fontSize: 10)))]));
 
   Widget _smallControl(IconData icon, String label, VoidCallback onTap) => TextButton(
         onPressed: onTap,
@@ -725,13 +813,25 @@ class _SignaturePreset {
   final double exposure;
   final double zoomFactor;
   final FlashMode flash;
+  final double brightness, contrast, saturation, warmth, tint;
+  const _SignaturePreset(this.name, this.hint, this.icon, this.exposure, this.zoomFactor, this.flash,
+    {this.brightness = 0, this.contrast = 1, this.saturation = 1, this.warmth = 0, this.tint = 0});
 
-  const _SignaturePreset(
-    this.name,
-    this.hint,
-    this.icon,
-    this.exposure,
-    this.zoomFactor,
-    this.flash,
-  );
+  Map<String, dynamic> toJson() => {'name':name,'hint':hint,'brightness':brightness,'contrast':contrast,'saturation':saturation,'warmth':warmth,'tint':tint,'exposure':exposure,'zoomFactor':zoomFactor,'flash':flash.name};
+
+  factory _SignaturePreset.fromJson(Map<String, dynamic> json) {
+    final name = (json['name'] as String?)?.trim() ?? '';
+    if (name.isEmpty || name.length > 32) throw const FormatException('Invalid preset name');
+    double number(String key, double fallback, double min, double max) {
+      final value = (json[key] as num?)?.toDouble() ?? fallback;
+      if (!value.isFinite || value < min || value > max) throw FormatException('Invalid $key');
+      return value;
+    }
+    final flashName = json['flash'] as String? ?? 'off';
+    final flash = FlashMode.values.where((v) => v.name == flashName).firstOrNull ?? FlashMode.off;
+    return _SignaturePreset(name, (json['hint'] as String?) ?? 'Imported grade', Icons.palette_outlined,
+      number('exposure',0,-4,4), number('zoomFactor',1,1,4), flash,
+      brightness:number('brightness',0,-0.35,0.35), contrast:number('contrast',1,0.5,1.8),
+      saturation:number('saturation',1,0,2), warmth:number('warmth',0,-1,1), tint:number('tint',0,-1,1));
+  }
 }
