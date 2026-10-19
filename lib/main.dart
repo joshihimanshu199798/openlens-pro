@@ -55,6 +55,19 @@ class _CameraScreenState extends State<CameraScreen> {
   double _maxExposure = 0;
   FlashMode _flash = FlashMode.off;
   XFile? _lastPhoto;
+  String _activePreset = 'Auto';
+
+  // Original OpenLens presets use real camera controls supported by the device.
+  static const List<_SignaturePreset> _presets = [
+    _SignaturePreset('Auto', 'Balanced', Icons.auto_awesome_rounded, 0.0, 1.0, FlashMode.off),
+    _SignaturePreset('Monsoon Chrome', 'Bright skies', Icons.water_drop_rounded, 0.3, 1.0, FlashMode.off),
+    _SignaturePreset('Neon Bazaar', 'Night lights', Icons.bolt_rounded, -0.3, 1.0, FlashMode.off),
+    _SignaturePreset('Moonmilk', 'Soft low light', Icons.nightlight_round, 0.7, 1.0, FlashMode.off),
+    _SignaturePreset('Dust & Gold', 'Warm daylight', Icons.wb_sunny_rounded, 0.3, 1.0, FlashMode.off),
+    _SignaturePreset('Quiet Detail', 'Closer framing', Icons.center_focus_strong_rounded, 0.0, 1.4, FlashMode.off),
+    _SignaturePreset('Shadow Atlas', 'Deep contrast', Icons.landscape_rounded, -0.7, 1.0, FlashMode.off),
+    _SignaturePreset('Candle Keeper', 'Extra light', Icons.flare_rounded, 0.3, 1.0, FlashMode.auto),
+  ];
 
   @override
   void initState() {
@@ -220,6 +233,40 @@ class _CameraScreenState extends State<CameraScreen> {
     }
   }
 
+  Future<void> _applyPreset(_SignaturePreset preset) async {
+    final camera = _controller;
+    if (camera == null || !camera.value.isInitialized) {
+      _showMessage('Start the camera before applying a preset.');
+      return;
+    }
+    if (_recording) {
+      _showMessage('Stop recording before changing presets.');
+      return;
+    }
+    final targetExposure = preset.exposure.clamp(_minExposure, _maxExposure).toDouble();
+    final targetZoom = (_minZoom * preset.zoomFactor).clamp(_minZoom, _maxZoom).toDouble();
+    try {
+      await camera.setExposureOffset(targetExposure);
+      await camera.setZoomLevel(targetZoom);
+      try {
+        await camera.setFlashMode(preset.flash);
+        _flash = preset.flash;
+      } catch (_) {
+        // Flash is optional; keep the rest of the preset when unavailable.
+      }
+      if (!mounted) return;
+      setState(() {
+        _activePreset = preset.name;
+        _exposure = targetExposure;
+        _zoom = targetZoom;
+        _showSettings = false;
+      });
+      _showMessage(preset.name + ' preset applied.');
+    } catch (_) {
+      _showMessage('This preset could not be fully applied on this camera.');
+    }
+  }
+
   Future<void> _setExposure(double value) async {
     final camera = _controller;
     if (camera == null) return;
@@ -297,6 +344,13 @@ class _CameraScreenState extends State<CameraScreen> {
                       ],
                     ),
                   ),
+                  if (!_showSettings)
+                    Positioned(
+                      left: 8,
+                      right: 8,
+                      bottom: 8,
+                      child: _presetTray(),
+                    ),
                   if (_showSettings)
                     Positioned(
                       left: 12,
@@ -464,6 +518,69 @@ class _CameraScreenState extends State<CameraScreen> {
         ),
       );
 
+  Widget _presetTray() => Container(
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+        decoration: BoxDecoration(
+          color: const Color(0xD9080A0C),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0x443F474D)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                const Text('SIGNATURE PRESETS',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.4)),
+                const Spacer(),
+                Text(_activePreset.toUpperCase(),
+                    style: const TextStyle(fontSize: 9, color: Color(0xFFB8F36B), letterSpacing: 1)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 58,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _presets.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 7),
+                itemBuilder: (context, index) {
+                  final preset = _presets[index];
+                  final selected = preset.name == _activePreset;
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(13),
+                    onTap: () => _applyPreset(preset),
+                    child: Container(
+                      width: 91,
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: selected ? const Color(0xFFB8F36B) : const Color(0xFF1A2023),
+                        borderRadius: BorderRadius.circular(13),
+                        border: Border.all(color: selected ? const Color(0xFFB8F36B) : const Color(0xFF343B3F)),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(preset.icon, size: 17, color: selected ? Colors.black : const Color(0xFFB8F36B)),
+                          const SizedBox(height: 3),
+                          Text(preset.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800,
+                                  color: selected ? Colors.black : Colors.white)),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+
   Widget _settingsPanel() => Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -598,4 +715,23 @@ class _GridPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+
+class _SignaturePreset {
+  final String name;
+  final String hint;
+  final IconData icon;
+  final double exposure;
+  final double zoomFactor;
+  final FlashMode flash;
+
+  const _SignaturePreset(
+    this.name,
+    this.hint,
+    this.icon,
+    this.exposure,
+    this.zoomFactor,
+    this.flash,
+  );
 }
