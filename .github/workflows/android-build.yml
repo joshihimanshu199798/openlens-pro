@@ -1,0 +1,51 @@
+name: OpenLens Pro Android CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate Android platform files if absent
+        run: |
+          if [ ! -d android ]; then
+            flutter create --platforms=android --org com.openlenspro .
+          fi
+      - name: Ensure camera permission
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p = Path("android/app/src/main/AndroidManifest.xml")
+          s = p.read_text()
+          permission = '    <uses-permission android:name="android.permission.CAMERA" />'
+          if "android.permission.CAMERA" not in s:
+              s = re.sub(r'(<manifest\\b[^>]*>)', r'\\1\\n' + permission, s, count=1)
+              p.write_text(s)
+          PY
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Analyze
+        run: flutter analyze
+      - name: Test
+        run: flutter test
+      - name: Build release APK
+        run: flutter build apk --release
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: openlens-pro-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
