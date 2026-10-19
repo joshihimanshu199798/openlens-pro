@@ -1,7 +1,15 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:camera/camera.dart';
-import 'package:gal/gal.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:gal/gal.dart';
+import 'package:image/image.dart' as img;
+import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -55,6 +63,13 @@ class _CameraScreenState extends State<CameraScreen> {
   double _maxExposure = 0;
   FlashMode _flash = FlashMode.off;
   String _activePreset = 'Auto';
+  static const String _customPresetsKey = 'openlens_custom_presets_v1';
+  List<_SignaturePreset> _customPresets = [];
+  double _gradeBrightness = 0;
+  double _gradeContrast = 1;
+  double _gradeSaturation = 1;
+  double _gradeWarmth = 0;
+  double _gradeTint = 0;
 
   // Original OpenLens presets use real camera controls supported by the device.
   static const List<_SignaturePreset> _presets = [
@@ -71,6 +86,7 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   void initState() {
     super.initState();
+    _loadCustomPresets();
     _initializeCamera();
   }
 
