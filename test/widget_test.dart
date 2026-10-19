@@ -5,6 +5,7 @@ void main() {
   testWidgets('OpenLens Pro launches', (WidgetTester tester) async {
     await tester.pumpWidget(const OpenLensApp());
     await tester.pump();
-    expect(find.text('OPENLENS PRO'), findsOneWidget);
+    expect(find.text('OPENLENS'), findsOneWidget);
+    expect(find.text('PRO CAMERA'), findsOneWidget);
   });
 }
