@@ -54,7 +54,6 @@ class _CameraScreenState extends State<CameraScreen> {
   double _minExposure = 0;
   double _maxExposure = 0;
   FlashMode _flash = FlashMode.off;
-  XFile? _lastPhoto;
   String _activePreset = 'Auto';
 
   // Original OpenLens presets use real camera controls supported by the device.
@@ -217,7 +216,6 @@ class _CameraScreenState extends State<CameraScreen> {
       await Gal.putImage(savedPath, album: 'OpenLens Pro');
       if (!mounted) return;
       setState(() {
-        _lastPhoto = XFile(savedPath);
         _status = 'Graded photo saved to gallery · ${photo.name}';
       });
       _showMessage('Photo saved to your gallery.');
@@ -828,7 +826,7 @@ class _SignaturePreset {
       return value;
     }
     final flashName = json['flash'] as String? ?? 'off';
-    final flash = FlashMode.values.where((v) => v.name == flashName).firstOrNull ?? FlashMode.off;
+    final flash = FlashMode.values.firstWhere((v) => v.name == flashName, orElse: () => FlashMode.off);
     return _SignaturePreset(name, (json['hint'] as String?) ?? 'Imported grade', Icons.palette_outlined,
       number('exposure',0,-4,4), number('zoomFactor',1,1,4), flash,
       brightness:number('brightness',0,-0.35,0.35), contrast:number('contrast',1,0.5,1.8),
