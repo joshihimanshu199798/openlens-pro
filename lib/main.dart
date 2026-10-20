@@ -1662,9 +1662,12 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
                       borderRadius: BorderRadius.circular(16),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(16),
-                        onTap: () async {
-                          await _recordRecent(preset.name);
-                          if (context.mounted) widget.onApply(preset);
+                        onTap: () {
+                          // Apply immediately; persistence must never block a tap.
+                          // SharedPreferences can fail or stall on some devices, so
+                          // record the recent look only as a best-effort background task.
+                          widget.onApply(preset);
+                          _recordRecent(preset.name).catchError((_) {});
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
