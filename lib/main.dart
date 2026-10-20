@@ -526,6 +526,40 @@ class _CameraScreenState extends State<CameraScreen> {
         child: Column(
           children: [
             _topBar(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+              child: Material(
+                color: const Color(0xFF1A2115),
+                borderRadius: BorderRadius.circular(14),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => _PresetLibraryPage(
+                      presets: [..._presets, ..._libraryPresets, ..._customPresets],
+                      activePreset: _activePreset,
+                      onApply: (preset) { Navigator.of(context).pop(); _applyPreset(preset); },
+                    ),
+                  )),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFB8F36B).withValues(alpha: .75)),
+                    ),
+                    child: const Row(children: [
+                      Icon(Icons.auto_awesome_mosaic_rounded, color: Color(0xFFB8F36B), size: 22),
+                      SizedBox(width: 10),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                        Text('PRESET LIBRARY', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.1)),
+                        Text('100+ looks · Browse by category', style: TextStyle(fontSize: 10, color: Colors.white70)),
+                      ])),
+                      Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFFB8F36B), size: 15),
+                    ]),
+                  ),
+                ),
+              ),
+            ),
             Expanded(
               child: Stack(
                 fit: StackFit.expand,
