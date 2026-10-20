@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: openlens-android-\${{ github.ref }}
+  group: openlens-android-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
