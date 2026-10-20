@@ -53,6 +53,8 @@ class _CameraScreenState extends State<CameraScreen> {
   bool _recording = false;
   bool _grid = true;
   bool _showSettings = false;
+  bool _focusLocked = false;
+  bool _exposureLocked = false;
   String _status = 'Starting camera…';
   String _mode = 'PHOTO';
   double _zoom = 1;
@@ -486,6 +488,48 @@ class _CameraScreenState extends State<CameraScreen> {
     }
   }
 
+  Future<void> _toggleFocusLock() async {
+    final camera = _controller;
+    if (camera == null || !camera.value.isInitialized) return;
+    final next = !_focusLocked;
+    try {
+      await camera.setFocusMode(next ? FocusMode.locked : FocusMode.auto);
+      if (mounted) setState(() => _focusLocked = next);
+      _showMessage(next ? 'Focus locked. Tap PRO to unlock and refocus.' : 'Autofocus restored.');
+    } catch (_) {
+      _showMessage('Focus lock is not supported by this camera.');
+    }
+  }
+
+  Future<void> _toggleExposureLock() async {
+    final camera = _controller;
+    if (camera == null || !camera.value.isInitialized) return;
+    final next = !_exposureLocked;
+    try {
+      await camera.setExposureMode(next ? ExposureMode.locked : ExposureMode.auto);
+      if (mounted) setState(() => _exposureLocked = next);
+      _showMessage(next ? 'Auto exposure locked.' : 'Auto exposure restored.');
+    } catch (_) {
+      _showMessage('Exposure lock is not supported by this camera.');
+    }
+  }
+
+  Future<void> _resetExposure() async {
+    final camera = _controller;
+    if (camera == null) return;
+    try {
+      if (_exposureLocked) {
+        await camera.setExposureMode(ExposureMode.auto);
+        _exposureLocked = false;
+      }
+      final zero = 0.0.clamp(_minExposure, _maxExposure).toDouble();
+      await camera.setExposureOffset(zero);
+      if (mounted) setState(() => _exposure = zero);
+    } catch (_) {
+      _showMessage('Could not reset exposure on this camera.');
+    }
+  }
+
   Future<void> _tapToFocus(TapDownDetails details, BuildContext context) async {
     final camera = _controller;
     if (camera == null) return;
@@ -864,6 +908,27 @@ class _CameraScreenState extends State<CameraScreen> {
                 Text(_exposure.toStringAsFixed(1), style: const TextStyle(fontSize: 10)),
               ],
             ),
+            Row(children: [
+              Expanded(child: OutlinedButton.icon(
+                onPressed: _toggleFocusLock,
+                icon: Icon(_focusLocked ? Icons.lock_rounded : Icons.center_focus_strong_rounded, size: 16),
+                label: Text(_focusLocked ? 'Focus locked' : 'Lock focus'),
+                style: OutlinedButton.styleFrom(foregroundColor: _focusLocked ? const Color(0xFFB8F36B) : Colors.white),
+              )),
+              const SizedBox(width: 8),
+              Expanded(child: OutlinedButton.icon(
+                onPressed: _toggleExposureLock,
+                icon: Icon(_exposureLocked ? Icons.lock_rounded : Icons.exposure_rounded, size: 16),
+                label: Text(_exposureLocked ? 'Exposure locked' : 'Lock exposure'),
+                style: OutlinedButton.styleFrom(foregroundColor: _exposureLocked ? const Color(0xFFB8F36B) : Colors.white),
+              )),
+            ]),
+            _gradeSlider('Zoom', _zoom, _minZoom, _maxZoom > _minZoom ? _maxZoom : _minZoom + 0.01, _setZoom),
+            Align(alignment: Alignment.centerRight, child: TextButton.icon(
+              onPressed: _resetExposure,
+              icon: const Icon(Icons.restart_alt_rounded, size: 16),
+              label: const Text('Reset exposure'),
+            )),
             Row(children: [Expanded(child: OutlinedButton.icon(onPressed: _importCustomPreset, icon: const Icon(Icons.file_open_rounded, size: 16), label: const Text('Import preset JSON'))), const SizedBox(width: 8), Expanded(child: OutlinedButton.icon(onPressed: _exportPresetFormat, icon: const Icon(Icons.content_copy_rounded, size: 16), label: const Text('Preset template')))]),
             _gradeSlider('Brightness', _gradeBrightness, -0.35, 0.35, (v) => setState(() { _gradeBrightness = v; _activePreset = 'Custom'; })),
             _gradeSlider('Contrast', _gradeContrast, 0.5, 1.8, (v) => setState(() { _gradeContrast = v; _activePreset = 'Custom'; })),
@@ -873,7 +938,7 @@ class _CameraScreenState extends State<CameraScreen> {
             const Text('Tap any point in the preview to set focus/exposure when supported.',
                 style: TextStyle(fontSize: 11, color: Colors.white60)),
             const SizedBox(height: 4),
-            const Text('ISO and shutter speed require a future Camera2 manual-control layer.',
+            const Text('Device limitation: true manual ISO, shutter speed, Kelvin white balance, RAW/DNG and frame-rate controls need a native Camera2 capture layer. These controls are not simulated here.',
                 style: TextStyle(fontSize: 10, color: Colors.orangeAccent)),
           ],
         ),
