@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: openlens-android-${{ github.ref }}
+  group: openlens-android-\${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -48,12 +48,12 @@ jobs:
               "android.permission.CAMERA",
               "android.permission.RECORD_AUDIO",
           ]
-          insert = "".join(f'    <uses-permission android:name="{p}" />\\n' for p in permissions if f'android:name="{p}"' not in text)
+          insert = "".join(f'    <uses-permission android:name="{p}" />\n' for p in permissions if f'android:name="{p}"' not in text)
           if insert:
-              match = re.search(r'<manifest\\b[^>]*>', text)
+              match = re.search(r'<manifest\b[^>]*>', text)
               if not match:
                   raise SystemExit("Could not find Android manifest root element")
-              text = text[:match.end()] + "\\n" + insert + text[match.end():]
+              text = text[:match.end()] + "\n" + insert + text[match.end():]
               manifest.write_text(text)
 
           gradle_files = [Path("android/app/build.gradle.kts"), Path("android/app/build.gradle")]
@@ -62,8 +62,8 @@ jobs:
               if not gradle.exists():
                   continue
               source = gradle.read_text()
-              updated = re.sub(r'minSdk\\s*=\\s*flutter\\.minSdkVersion', 'minSdk = 24', source)
-              updated = re.sub(r'minSdkVersion\\s+flutter\\.minSdkVersion', 'minSdkVersion 24', updated)
+              updated = re.sub(r'minSdk\s*=\s*flutter\.minSdkVersion', 'minSdk = 24', source)
+              updated = re.sub(r'minSdkVersion\s+flutter\.minSdkVersion', 'minSdkVersion 24', updated)
               if updated != source:
                   gradle.write_text(updated)
                   found = True
