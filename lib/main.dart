@@ -32,7 +32,7 @@ class OpenLensApp extends StatelessWidget {
           seedColor: const Color(0xFFB8F36B),
           brightness: Brightness.dark,
         ),
-        scaffoldBackgroundColor: const Color(0xFF080A0C),
+        scaffoldBackgroundColor: const Color(0xFF0A0D0E),
         useMaterial3: true,
       ),
       home: const CameraScreen(),
@@ -957,7 +957,7 @@ class _CameraScreenState extends State<CameraScreen> {
       );
 
   Widget _bottomControls() => Container(
-        padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
         decoration: const BoxDecoration(
           color: Color(0xFF0D1012),
           border: Border(top: BorderSide(color: Color(0xFF24282B))),
@@ -1548,8 +1548,8 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
         children: [
           if (active != null)
             Container(
-              margin: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              margin: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               decoration: BoxDecoration(
                 color: const Color(0xFF1B2417),
                 borderRadius: BorderRadius.circular(16),
@@ -1668,7 +1668,7 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
               : ListView.separated(
                   padding: const EdgeInsets.fromLTRB(16, 2, 16, 18),
                   itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 6),
+                  separatorBuilder: (_, __) => const SizedBox(height: 5),
                   itemBuilder: (context, index) {
                     final preset = filtered[index];
                     final selected = preset.name == widget.activePreset;
@@ -1682,14 +1682,14 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
                           if (context.mounted) widget.onApply(preset);
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+                          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(color: selected ? const Color(0xFFB8F36B) : const Color(0xFF2B3338)),
                           ),
                           child: Row(children: [
                             Container(
-                              width: 40, height: 40,
+                              width: 38, height: 38,
                               decoration: BoxDecoration(
                                 color: selected ? const Color(0xFFB8F36B) : const Color(0xFF252D31),
                                 borderRadius: BorderRadius.circular(13),
