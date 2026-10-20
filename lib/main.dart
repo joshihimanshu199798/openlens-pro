@@ -1063,13 +1063,18 @@ class _CameraScreenState extends State<CameraScreen> {
                     style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
                 const Spacer(),
                 TextButton(
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                    builder: (_) => _PresetLibraryPage(
-                      presets: [..._presets, ..._libraryPresets, ..._customPresets],
-                      activePreset: _activePreset,
-                      onApply: (preset) { Navigator.of(context).pop(); _applyPreset(preset); },
-                    ),
-                  )),
+                  onPressed: () async {
+                    final preset = await Navigator.of(context).push<_SignaturePreset>(
+                      MaterialPageRoute<_SignaturePreset>(
+                        builder: (_) => _PresetLibraryPage(
+                          presets: [..._presets, ..._libraryPresets, ..._customPresets],
+                          activePreset: _activePreset,
+                          onApply: (preset) => Navigator.of(context).pop(preset),
+                        ),
+                      ),
+                    );
+                    if (preset != null && mounted) await _applyPreset(preset);
+                  },
                   style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8), minimumSize: const Size(0, 30)),
                   child: const Text('All looks  ›', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
                 ),
@@ -1172,6 +1177,43 @@ class _CameraScreenState extends State<CameraScreen> {
                 ),
               ],
             ),
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(top: 4, bottom: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A2118),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFF455735)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    const Icon(Icons.auto_awesome_rounded, size: 17, color: Color(0xFFB8F36B)),
+                    const SizedBox(width: 7),
+                    const Text('ACTIVE LOOK', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                    const Spacer(),
+                    Text(_activePreset, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFFB8F36B))),
+                  ]),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      _gradeValueChip('Brightness', _gradeBrightness.toStringAsFixed(2)),
+                      _gradeValueChip('Contrast', _gradeContrast.toStringAsFixed(2)),
+                      _gradeValueChip('Saturation', _gradeSaturation.toStringAsFixed(2)),
+                      _gradeValueChip('Warmth', _gradeWarmth.toStringAsFixed(2)),
+                      _gradeValueChip('Tint', _gradeTint.toStringAsFixed(2)),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Text('These values update when you select a look. Adjust the sliders below to customize it.',
+                    style: TextStyle(fontSize: 10, color: Colors.white60)),
+                ],
+              ),
+            ),
             const Text('EXPOSURE COMPENSATION', style: TextStyle(fontSize: 10, color: Colors.white60)),
             Row(
               children: [
@@ -1229,6 +1271,15 @@ class _CameraScreenState extends State<CameraScreen> {
                 style: TextStyle(fontSize: 10, color: Colors.orangeAccent)),
           ],
         ),
+      );
+
+  Widget _gradeValueChip(String label, String value) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: const Color(0xFF293226),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text('$label $value', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
       );
 
   Widget _gradeSlider(String label, double value, double min, double max, ValueChanged<double> onChanged) => Padding(padding: const EdgeInsets.only(top: 2), child: Row(children: [SizedBox(width: 78, child: Text(label, style: const TextStyle(fontSize: 11, color: Colors.white70))), Expanded(child: Slider(value: value.clamp(min,max).toDouble(), min: min, max: max, onChanged: onChanged, activeColor: const Color(0xFFB8F36B))), SizedBox(width: 38, child: Text(value.toStringAsFixed(2), textAlign: TextAlign.end, style: const TextStyle(fontSize: 10)))]));
