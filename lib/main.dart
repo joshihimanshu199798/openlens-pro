@@ -792,185 +792,111 @@ class _CameraScreenState extends State<CameraScreen> {
     super.dispose();
   }
 
+  Future<void> _openLooks() async {
+    final preset = await Navigator.of(context).push<_SignaturePreset>(
+      MaterialPageRoute<_SignaturePreset>(
+        builder: (_) => _PresetLibraryPage(
+          presets: [..._presets, ..._libraryPresets, ..._customPresets],
+          activePreset: _activePreset,
+          onApply: (preset) => Navigator.of(context).pop(preset),
+        ),
+      ),
+    );
+    if (preset != null && mounted) await _applyPreset(preset);
+  }
+
   @override
   Widget build(BuildContext context) {
     final camera = _controller;
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            _topBar(),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-              child: Material(
-                color: const Color(0xFF171D19),
-                borderRadius: BorderRadius.circular(16),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () async {
-                    // Return the chosen preset from the library route, then apply it
-                    // on the still-mounted camera screen. This avoids losing the
-                    // selection while the library route is being dismissed.
-                    final preset = await Navigator.of(context).push<_SignaturePreset>(
-                      MaterialPageRoute<_SignaturePreset>(
-                        builder: (_) => _PresetLibraryPage(
-                          presets: [..._presets, ..._libraryPresets, ..._customPresets],
-                          activePreset: _activePreset,
-                          onApply: (preset) => Navigator.of(context).pop(preset),
-                        ),
-                      ),
-                    );
-                    if (preset != null && mounted) {
-                      await _applyPreset(preset);
-                    }
-                  },
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFF35432C)),
-                    ),
-                    child: Row(children: [
-                      Container(
-                        width: 40, height: 40,
-                        decoration: BoxDecoration(color: const Color(0xFFB8F36B), borderRadius: BorderRadius.circular(12)),
-                        child: const Icon(Icons.palette_rounded, color: Colors.black, size: 22),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                        const Text('CURRENT LOOK', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.white60, letterSpacing: 1.1)),
-                        const SizedBox(height: 2),
-                        Text(_activePreset, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-                        Text('Tap to browse and apply a look', style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: .68))),
-                      ])),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.tune_rounded, color: Color(0xFFB8F36B), size: 22),
-                    ]),
-                  ),
+      backgroundColor: Colors.black,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (camera != null && camera.value.isInitialized)
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTapDown: (details) => _tapToFocus(details, context),
+              child: ColorFiltered(colorFilter: ColorFilter.matrix(_gradeMatrix), child: CameraPreview(camera)),
+            )
+          else
+            _cameraPlaceholder(),
+          if (_grid) IgnorePointer(child: _CompositionGrid(mode: _compositionGuide)),
+          if (_countdownRemaining != null)
+            Center(
+              child: Container(
+                width: 116, height: 116,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: .68), shape: BoxShape.circle,
+                  border: Border.all(color: const Color(0xFFB8F36B), width: 3),
                 ),
+                alignment: Alignment.center,
+                child: Text('$_countdownRemaining',
+                  style: const TextStyle(fontSize: 64, height: 1, fontWeight: FontWeight.w900, color: Color(0xFFB8F36B))),
               ),
             ),
-            _quickLooksBar(),
-            Expanded(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (camera != null && camera.value.isInitialized)
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTapDown: (details) => _tapToFocus(details, context),
-                      child: ColorFiltered(colorFilter: ColorFilter.matrix(_gradeMatrix), child: CameraPreview(camera)),
-                    )
-                  else
-                    _cameraPlaceholder(),
-                  if (_grid) IgnorePointer(child: _CompositionGrid(mode: _compositionGuide)),
-                  if (_countdownRemaining != null)
-                    Center(
-                      child: Container(
-                        width: 116,
-                        height: 116,
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: .68),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: const Color(0xFFB8F36B), width: 3),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          '$_countdownRemaining',
-                          style: const TextStyle(fontSize: 64, height: 1, fontWeight: FontWeight.w900, color: Color(0xFFB8F36B)),
-                        ),
-                      ),
-                    ),
-                  if (_showHistogram)
-                    Positioned(
-                      top: 58,
-                      right: 12,
-                      child: _LiveHistogram(values: _histogram, highlightPercent: _highlightPercent),
-                    ),
-                  Positioned(
-                    left: 16,
-                    right: 16,
-                    top: 14,
-                    child: Row(
-                      children: [
-                        _pill('LIVE', const Color(0xFFB8F36B), Colors.black),
-                        const Spacer(),
-                        _pill(_mode, Colors.black.withValues(alpha: .62), Colors.white),
-                      ],
-                    ),
-                  ),
-                  if (!_showSettings)
-                    Positioned(
-                      left: 8,
-                      right: 8,
-                      bottom: 8,
-                      child: _presetTray(),
-                    ),
-                  if (_showSettings)
-                    Positioned(
-                      left: 12,
-                      right: 12,
-                      bottom: 12,
-                      child: _settingsPanel(),
-                    ),
-                ],
-              ),
-            ),
-            _bottomControls(),
-          ],
-        ),
+          if (_showHistogram)
+            Positioned(top: 100, right: 12,
+              child: SafeArea(child: _LiveHistogram(values: _histogram, highlightPercent: _highlightPercent))),
+          Positioned(left: 0, right: 0, top: 0,
+            child: SafeArea(bottom: false, child: _topBar())),
+          Positioned(left: 16, right: 16, top: 86,
+            child: Row(children: [
+              _pill('LIVE', const Color(0xFFB8F36B), Colors.black),
+              const Spacer(),
+              _pill(_mode, Colors.black.withValues(alpha: .48), Colors.white),
+            ])),
+          if (_showSettings)
+            Positioned(left: 12, right: 12, bottom: 245,
+              child: SafeArea(top: false, child: _settingsPanel())),
+          Positioned(left: 12, right: 12, bottom: 8,
+            child: SafeArea(top: false, child: _bottomControls())),
+        ],
       ),
     );
   }
 
   Widget _topBar() => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-        child: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: const Color(0xFFB8F36B),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.camera_alt_rounded, color: Colors.black),
-            ),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('OPENLENS', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2)),
-                  Text('PRO CAMERA', style: TextStyle(fontSize: 10, color: Colors.white54, letterSpacing: 2)),
-                ],
-              ),
-            ),
-            IconButton(
-              tooltip: 'Toggle composition guide',
-              onPressed: () => setState(() => _grid = !_grid),
-              icon: Icon(_grid ? Icons.grid_on_rounded : Icons.grid_off_rounded),
-            ),
-            PopupMenuButton<String>(
-              tooltip: 'Choose composition guide',
-              initialValue: _compositionGuide,
-              onSelected: (value) => setState(() { _compositionGuide = value; _grid = true; }),
-              itemBuilder: (context) => const [
-                PopupMenuItem(value: 'Thirds', child: Text('Rule of thirds')),
-                PopupMenuItem(value: 'Center', child: Text('Center crosshair')),
-                PopupMenuItem(value: 'Portrait', child: Text('Portrait frame')),
-                PopupMenuItem(value: 'Golden', child: Text('Golden ratio')),
-              ],
-              icon: const Icon(Icons.crop_free_rounded),
-            ),
-            IconButton(
-              tooltip: 'Camera settings',
-              onPressed: () => setState(() => _showSettings = !_showSettings),
-              icon: Icon(_showSettings ? Icons.tune_rounded : Icons.settings_rounded),
-            ),
-          ],
-        ),
+        padding: const EdgeInsets.fromLTRB(14, 8, 8, 4),
+        child: Row(children: [
+          const Icon(Icons.camera_alt_rounded, size: 25, color: Color(0xFFB8F36B)),
+          const SizedBox(width: 9),
+          const Expanded(child: Text('OPENLENS',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, letterSpacing: 2))),
+          _minimalTopAction(tooltip: 'Composition grid',
+            icon: _grid ? Icons.grid_on_rounded : Icons.grid_off_rounded,
+            onPressed: () => setState(() => _grid = !_grid)),
+          PopupMenuButton<String>(
+            tooltip: 'Composition guide',
+            initialValue: _compositionGuide,
+            color: const Color(0xEE171B1E),
+            onSelected: (value) => setState(() { _compositionGuide = value; _grid = true; }),
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: 'Thirds', child: Text('Rule of thirds')),
+              PopupMenuItem(value: 'Center', child: Text('Center crosshair')),
+              PopupMenuItem(value: 'Portrait', child: Text('Portrait frame')),
+              PopupMenuItem(value: 'Golden', child: Text('Golden ratio')),
+            ],
+            icon: const Icon(Icons.crop_free_rounded, color: Colors.white),
+          ),
+          _minimalTopAction(tooltip: 'Filters and looks', icon: Icons.tune_rounded,
+            onPressed: _openLooks, active: _activePreset != 'Auto'),
+          _minimalTopAction(tooltip: 'Camera settings',
+            icon: _showSettings ? Icons.close_rounded : Icons.settings_rounded,
+            onPressed: () => setState(() => _showSettings = !_showSettings)),
+        ]),
+      );
+
+  Widget _minimalTopAction({
+    required String tooltip,
+    required IconData icon,
+    required VoidCallback onPressed,
+    bool active = false,
+  }) => IconButton(
+        tooltip: tooltip,
+        visualDensity: VisualDensity.compact,
+        onPressed: onPressed,
+        icon: Icon(icon, color: active ? const Color(0xFFB8F36B) : Colors.white.withValues(alpha: .88), size: 23),
       );
 
   Widget _quickLooksBar() {
@@ -1025,92 +951,54 @@ class _CameraScreenState extends State<CameraScreen> {
       );
 
   Widget _bottomControls() => Container(
-        padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
-        decoration: const BoxDecoration(
-          color: Color(0xFF0D1012),
-          border: Border(top: BorderSide(color: Color(0xFF24282B))),
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+        decoration: BoxDecoration(
+          color: const Color(0xB80A0D0F),
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: Colors.white.withValues(alpha: .10)),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                Expanded(child: _smallControl(Icons.flash_on_rounded, _flash.name.toUpperCase(), _toggleFlash)),
-                Expanded(
-                  child: Column(
-                    children: [
-                      Text('${_zoom.toStringAsFixed(1)}×', style: const TextStyle(fontWeight: FontWeight.w700)),
-                      const Text('ZOOM', style: TextStyle(fontSize: 9, color: Colors.white54, letterSpacing: 1.5)),
-                    ],
-                  ),
-                ),
-                Expanded(child: _smallControl(Icons.cameraswitch_rounded, 'FLIP', _switchCamera)),
-              ],
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Row(children: [
+            _smallControl(Icons.flash_on_rounded, _flash.name.toUpperCase(), _toggleFlash),
+            Expanded(child: Column(children: [
+              Text('${_zoom.toStringAsFixed(1)}×', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              const Text('ZOOM', style: TextStyle(fontSize: 9, color: Colors.white54, letterSpacing: 1.5)),
+            ])),
+            _smallControl(Icons.cameraswitch_rounded, 'FLIP', _switchCamera),
+          ]),
+          if (_maxZoom > _minZoom)
+            SizedBox(height: 28, child: Slider(
+              value: _zoom.clamp(_minZoom, _maxZoom).toDouble(),
+              min: _minZoom, max: _maxZoom, onChanged: _setZoom,
+              activeColor: const Color(0xFFB8F36B), inactiveColor: Colors.white24)),
+          const SizedBox(height: 2),
+          Row(children: [
+            Expanded(child: IconButton(tooltip: 'Preview a photo from gallery',
+              onPressed: _openGalleryPreview,
+              icon: const Icon(Icons.photo_library_outlined, color: Color(0xFFB8F36B), size: 25))),
+            GestureDetector(
+              onTap: _busy ? null : _captureAction,
+              child: Container(width: 72, height: 72,
+                decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 3)),
+                child: Center(child: Container(width: 56, height: 56,
+                  decoration: BoxDecoration(color: _busy ? Colors.white38 : const Color(0xFFB8F36B), shape: BoxShape.circle),
+                  child: _busy
+                    ? const Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                    : Icon(_recording ? Icons.stop_rounded : (_mode == 'VIDEO' ? Icons.videocam_rounded : Icons.camera_alt_rounded), color: Colors.black, size: 27)))),
             ),
-            if (_maxZoom > _minZoom)
-              Slider(
-                value: _zoom.clamp(_minZoom, _maxZoom).toDouble(),
-                min: _minZoom,
-                max: _maxZoom,
-                onChanged: _setZoom,
-                activeColor: const Color(0xFFB8F36B),
-              ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Expanded(child: IconButton(tooltip: 'Preview a photo from gallery', onPressed: _openGalleryPreview, icon: const Icon(Icons.photo_library_outlined, color: Color(0xFFB8F36B), size: 28))),
-                GestureDetector(
-                  onTap: _busy ? null : _captureAction,
-                  child: Container(
-                    width: 76,
-                    height: 76,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 4),
-                    ),
-                    child: Center(
-                      child: Container(
-                        width: 58,
-                        height: 58,
-                        decoration: BoxDecoration(
-                          color: _busy ? Colors.white38 : const Color(0xFFB8F36B),
-                          shape: BoxShape.circle,
-                        ),
-                        child: _busy
-                            ? const Padding(
-                                padding: EdgeInsets.all(17),
-                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
-                              )
-                            : Icon(_recording ? Icons.stop_rounded : (_mode == 'VIDEO' ? Icons.videocam_rounded : Icons.camera_alt_rounded), color: Colors.black, size: 28),
-                      ),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: IconButton(
-                    tooltip: 'Exposure settings',
-                    onPressed: () => setState(() => _showSettings = !_showSettings),
-                    icon: const Icon(Icons.exposure_rounded, size: 28),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _modeButton('PHOTO'),
-                const SizedBox(width: 20),
-                _modeButton('PRO'),
-                const SizedBox(width: 20),
-                _modeButton('VIDEO'),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(_status, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 10, color: Colors.white38)),
-          ],
-        ),
+            Expanded(child: IconButton(tooltip: 'Exposure and camera settings',
+              onPressed: () => setState(() => _showSettings = !_showSettings),
+              icon: const Icon(Icons.exposure_rounded, size: 25, color: Colors.white70))),
+          ]),
+          const SizedBox(height: 5),
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            _modeButton('PHOTO'), const SizedBox(width: 16),
+            _modeButton('PRO'), const SizedBox(width: 16), _modeButton('VIDEO'),
+          ]),
+          const SizedBox(height: 4),
+          Text(_status, maxLines: 1, overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 10, color: Colors.white38)),
+        ]),
       );
 
   Widget _presetTray() => Container(
