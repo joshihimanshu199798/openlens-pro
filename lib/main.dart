@@ -192,13 +192,13 @@ class _CameraScreenState extends State<CameraScreen> {
   // Original OpenLens presets use real camera controls supported by the device.
   static const List<_SignaturePreset> _presets = [
     _SignaturePreset('Auto', 'Balanced', Icons.auto_awesome_rounded, 0.0, 1.0, FlashMode.off),
-    _SignaturePreset('Monsoon Chrome', 'Bright skies', Icons.water_drop_rounded, 0.3, 1.0, FlashMode.off),
-    _SignaturePreset('Neon Bazaar', 'Night lights', Icons.bolt_rounded, -0.3, 1.0, FlashMode.off),
-    _SignaturePreset('Moonmilk', 'Soft low light', Icons.nightlight_round, 0.7, 1.0, FlashMode.off),
-    _SignaturePreset('Dust & Gold', 'Warm daylight', Icons.wb_sunny_rounded, 0.3, 1.0, FlashMode.off),
-    _SignaturePreset('Quiet Detail', 'Closer framing', Icons.center_focus_strong_rounded, 0.0, 1.4, FlashMode.off),
-    _SignaturePreset('Shadow Atlas', 'Deep contrast', Icons.landscape_rounded, -0.7, 1.0, FlashMode.off),
-    _SignaturePreset('Candle Keeper', 'Extra light', Icons.flare_rounded, 0.3, 1.0, FlashMode.auto),
+    _SignaturePreset('Monsoon Chrome', 'Bright skies', Icons.water_drop_rounded, 0.3, 1.0, FlashMode.off, category: 'Signature', brightness: 0.04, contrast: 1.18, saturation: 1.24, warmth: -0.12, tint: -0.02),
+    _SignaturePreset('Neon Bazaar', 'Night lights', Icons.bolt_rounded, -0.3, 1.0, FlashMode.off, category: 'Signature', brightness: -0.04, contrast: 1.32, saturation: 1.38, warmth: -0.08, tint: -0.10),
+    _SignaturePreset('Moonmilk', 'Soft low light', Icons.nightlight_round, 0.7, 1.0, FlashMode.off, category: 'Signature', brightness: 0.10, contrast: 0.82, saturation: 0.82, warmth: 0.16, tint: 0.05),
+    _SignaturePreset('Dust & Gold', 'Warm daylight', Icons.wb_sunny_rounded, 0.3, 1.0, FlashMode.off, category: 'Signature', brightness: 0.04, contrast: 1.08, saturation: 0.92, warmth: 0.42, tint: 0.04),
+    _SignaturePreset('Quiet Detail', 'Closer framing', Icons.center_focus_strong_rounded, 0.0, 1.4, FlashMode.off, category: 'Signature', brightness: 0.01, contrast: 1.24, saturation: 0.96, warmth: 0.02, tint: 0.00),
+    _SignaturePreset('Shadow Atlas', 'Deep contrast', Icons.landscape_rounded, -0.7, 1.0, FlashMode.off, category: 'Signature', brightness: -0.06, contrast: 1.42, saturation: 0.76, warmth: -0.08, tint: -0.02),
+    _SignaturePreset('Candle Keeper', 'Extra light', Icons.flare_rounded, 0.3, 1.0, FlashMode.auto, category: 'Signature', brightness: 0.12, contrast: 0.94, saturation: 0.88, warmth: 0.34, tint: 0.04),
   ];
 
   @override
