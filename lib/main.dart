@@ -294,9 +294,19 @@ class _CameraScreenState extends State<CameraScreen> {
   }
 
   Future<void> _exportPresetFormat() async {
-    final sample = {'format':'openlens-grade-v1','presets':[{'name':'My Film','brightness':0.02,'contrast':1.12,'saturation':0.9,'warmth':0.25,'tint':0.03,'exposure':0.0,'zoomFactor':1.0,'flash':'off'}]};
-    await Clipboard.setData(ClipboardData(text: const JsonEncoder.withIndent('  ').convert(sample)));
-    _showMessage('OpenLens JSON preset template copied to clipboard.');
+    final entries = _customPresets.isEmpty
+        ? <Map<String, dynamic>>[
+            {'name':'My Film','hint':'Example custom grade','category':'Film','brightness':0.02,'contrast':1.12,'saturation':0.9,'warmth':0.25,'tint':0.03,'exposure':0.0,'zoomFactor':1.0,'flash':'off'},
+          ]
+        : _customPresets.map((preset) => preset.toJson()).toList();
+    final payload = {
+      'format': 'openlens-grade-v1',
+      'presets': entries,
+    };
+    await Clipboard.setData(ClipboardData(text: const JsonEncoder.withIndent('  ').convert(payload)));
+    _showMessage(_customPresets.isEmpty
+        ? 'Example preset JSON copied. Add custom looks to export your own.'
+        : 'Exported ${_customPresets.length} custom preset(s) as JSON to clipboard.');
   }
 
   Future<void> _openGalleryPreview() async {
@@ -306,8 +316,36 @@ class _CameraScreenState extends State<CameraScreen> {
       await showDialog<void>(context: context, builder: (context) => Dialog.fullscreen(child: Scaffold(
         appBar: AppBar(title: const Text('GALLERY PREVIEW'), actions: [IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close))]),
         body: Center(child: InteractiveViewer(child: ColorFiltered(colorFilter: ColorFilter.matrix(_gradeMatrix), child: Image.file(File(picked.path), fit: BoxFit.contain)))),
-        // ignore: prefer_const_constructors
-        bottomNavigationBar: SafeArea(child: Padding(padding: const EdgeInsets.all(16), child: Text('Previewing with $_activePreset grade. Original gallery file is unchanged.', textAlign: TextAlign.center))),
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Previewing with $_activePreset grade. The original photo stays unchanged.', textAlign: TextAlign.center),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    icon: const Icon(Icons.save_alt_rounded),
+                    label: const Text('Save graded copy'),
+                    onPressed: () async {
+                      final outputPath = '${picked.path}.openlens-graded.jpg';
+                      try {
+                        await _applyGradeToFile(picked.path, outputPath);
+                        await Gal.putImage(outputPath, album: 'OpenLens Pro Edited');
+                        if (context.mounted) Navigator.of(context).pop();
+                        _showMessage('Edited copy saved to the OpenLens Pro Edited album.');
+                      } catch (_) {
+                        _showMessage('Could not save the edited copy. Try another photo.');
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       )));
     } catch (_) { _showMessage('Could not open the gallery. Check photo access and try again.'); }
   }
@@ -1111,7 +1149,7 @@ class _CameraScreenState extends State<CameraScreen> {
               icon: const Icon(Icons.restart_alt_rounded, size: 16),
               label: const Text('Reset exposure'),
             )),
-            Row(children: [Expanded(child: OutlinedButton.icon(onPressed: _importCustomPreset, icon: const Icon(Icons.file_open_rounded, size: 16), label: const Text('Import preset JSON'))), const SizedBox(width: 8), Expanded(child: OutlinedButton.icon(onPressed: _exportPresetFormat, icon: const Icon(Icons.content_copy_rounded, size: 16), label: const Text('Preset template')))]),
+            Row(children: [Expanded(child: OutlinedButton.icon(onPressed: _importCustomPreset, icon: const Icon(Icons.file_open_rounded, size: 16), label: const Text('Import preset JSON'))), const SizedBox(width: 8), Expanded(child: OutlinedButton.icon(onPressed: _exportPresetFormat, icon: const Icon(Icons.content_copy_rounded, size: 16), label: const Text('Export JSON')))]),
             _gradeSlider('Brightness', _gradeBrightness, -0.35, 0.35, (v) => setState(() { _gradeBrightness = v; _activePreset = 'Custom'; })),
             _gradeSlider('Contrast', _gradeContrast, 0.5, 1.8, (v) => setState(() { _gradeContrast = v; _activePreset = 'Custom'; })),
             _gradeSlider('Saturation', _gradeSaturation, 0, 2, (v) => setState(() { _gradeSaturation = v; _activePreset = 'Custom'; })),
@@ -1345,8 +1383,44 @@ class _PresetLibraryPage extends StatefulWidget {
 }
 
 class _PresetLibraryPageState extends State<_PresetLibraryPage> {
+  static const String _favoritesKey = 'openlens_favorite_presets_v1';
+  static const String _recentKey = 'openlens_recent_presets_v1';
   String _category = 'All';
   String _query = '';
+  String _view = 'All';
+  Set<String> _favorites = {};
+  List<String> _recent = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPersonalLists();
+  }
+
+  Future<void> _loadPersonalLists() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _favorites = (prefs.getStringList(_favoritesKey) ?? []).toSet();
+      _recent = prefs.getStringList(_recentKey) ?? [];
+    });
+  }
+
+  Future<void> _toggleFavorite(String name) async {
+    final next = Set<String>.from(_favorites);
+    if (!next.add(name)) next.remove(name);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_favoritesKey, next.toList()..sort());
+    if (mounted) setState(() => _favorites = next);
+  }
+
+  Future<void> _recordRecent(String name) async {
+    final next = <String>[name, ..._recent.where((item) => item != name)];
+    if (next.length > 8) next.removeRange(8, next.length);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_recentKey, next);
+    if (mounted) setState(() => _recent = next);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1360,7 +1434,13 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
     final query = _query.trim().toLowerCase();
     final filtered = widget.presets.where((p) =>
       (_category == 'All' || p.category == _category) &&
-      ('${p.name} ${p.hint} ${p.category}'.toLowerCase().contains(query))).toList();
+      (_view != 'Favorites' || _favorites.contains(p.name)) &&
+      (_view != 'Recent' || _recent.contains(p.name)) &&
+      ('${p.name} ${p.hint} ${p.category}'.toLowerCase().contains(query))).toList()
+      ..sort((a, b) {
+        if (_view == 'Recent') return _recent.indexOf(a.name).compareTo(_recent.indexOf(b.name));
+        return 0;
+      });
     final activePresets = widget.presets.where((p) => p.name == widget.activePreset).toList();
     final _SignaturePreset? active = activePresets.isEmpty ? null : activePresets.first;
 
@@ -1457,6 +1537,23 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
             ]),
           ),
           Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Wrap(
+              spacing: 8,
+              children: ['All', 'Favorites', 'Recent'].map((view) => ChoiceChip(
+                label: Text(view),
+                selected: _view == view,
+                onSelected: (_) => setState(() => _view = view),
+                selectedColor: const Color(0xFFB8F36B),
+                labelStyle: TextStyle(
+                  color: _view == view ? Colors.black : Colors.white70,
+                  fontWeight: FontWeight.w700,
+                ),
+                side: BorderSide(color: _view == view ? const Color(0xFFB8F36B) : const Color(0xFF30383D)),
+              )).toList(),
+            ),
+          ),
+          Padding(
             padding: const EdgeInsets.fromLTRB(18, 2, 18, 8),
             child: Row(children: [
               Text('${filtered.length} looks', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
@@ -1492,7 +1589,10 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
                       borderRadius: BorderRadius.circular(16),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(16),
-                        onTap: () => widget.onApply(preset),
+                        onTap: () async {
+                          await _recordRecent(preset.name);
+                          if (context.mounted) widget.onApply(preset);
+                        },
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
                           decoration: BoxDecoration(
@@ -1518,6 +1618,16 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
                                 style: const TextStyle(fontSize: 11, color: Colors.white60)),
                             ])),
                             const SizedBox(width: 8),
+                            IconButton(
+                              tooltip: _favorites.contains(preset.name) ? 'Remove favorite' : 'Add favorite',
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () => _toggleFavorite(preset.name),
+                              icon: Icon(
+                                _favorites.contains(preset.name) ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                color: _favorites.contains(preset.name) ? const Color(0xFFFF7B8B) : Colors.white54,
+                                size: 20,
+                              ),
+                            ),
                             if (selected)
                               const Icon(Icons.check_circle_rounded, color: Color(0xFFB8F36B), size: 22)
                             else
