@@ -1009,16 +1009,18 @@ class _CameraScreenState extends State<CameraScreen> {
   Widget _cameraPlaceholder() => Container(
         color: const Color(0xFF15191C),
         alignment: Alignment.center,
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.camera_outdoor_rounded, size: 52, color: Color(0xFFB8F36B)),
-            const SizedBox(height: 12),
-            Text(_status, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
-            const SizedBox(height: 12),
-            OutlinedButton(onPressed: _initializeCamera, child: const Text('Retry camera')),
-          ],
+        padding: const EdgeInsets.all(12),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.camera_outdoor_rounded, size: 40, color: Color(0xFFB8F36B)),
+              const SizedBox(height: 6),
+              Text(_status, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+              const SizedBox(height: 6),
+              OutlinedButton(onPressed: _initializeCamera, child: const Text('Retry camera')),
+            ],
+          ),
         ),
       );
 
