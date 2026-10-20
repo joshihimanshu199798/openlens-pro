@@ -774,13 +774,23 @@ class _CameraScreenState extends State<CameraScreen> {
                 borderRadius: BorderRadius.circular(16),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(16),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                    builder: (_) => _PresetLibraryPage(
-                      presets: [..._presets, ..._libraryPresets, ..._customPresets],
-                      activePreset: _activePreset,
-                      onApply: (preset) { Navigator.of(context).pop(); _applyPreset(preset); },
-                    ),
-                  )),
+                  onTap: () async {
+                    // Return the chosen preset from the library route, then apply it
+                    // on the still-mounted camera screen. This avoids losing the
+                    // selection while the library route is being dismissed.
+                    final preset = await Navigator.of(context).push<_SignaturePreset>(
+                      MaterialPageRoute<_SignaturePreset>(
+                        builder: (_) => _PresetLibraryPage(
+                          presets: [..._presets, ..._libraryPresets, ..._customPresets],
+                          activePreset: _activePreset,
+                          onApply: (preset) => Navigator.of(context).pop(preset),
+                        ),
+                      ),
+                    );
+                    if (preset != null && mounted) {
+                      await _applyPreset(preset);
+                    }
+                  },
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
