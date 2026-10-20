@@ -7,13 +7,15 @@ OpenLens Pro is an offline-first Android camera prototype built with Flutter.
 - Flash mode controls where supported
 - Zoom and exposure compensation controls
 - Tap-to-focus/exposure where supported by the device
-- Composition grid overlay
+- Selectable rule-of-thirds, center, portrait-frame, and golden-ratio composition guides
+- Live aesthetic color grading with curated film, cinematic, portrait, and monochrome presets
+- Filtered-copy photo export
+- Video filter export using FFmpeg while retaining the original recording if grading fails
 - Dark camera-focused interface
 
 ## Current limitations
 - ISO and shutter-speed manual controls require a native Android Camera2 implementation and are not included yet.
-- Video mode is a placeholder.
-- Captured images currently use the camera plugin's temporary/cache path and are not yet saved to the system gallery.
+- Camera and encoder capabilities vary by device; test video filter exports on the target phone.
 - Actual support for zoom, focus, flash and exposure depends on the device camera.
 
 ## Build an Android APK
