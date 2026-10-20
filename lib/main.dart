@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:ffmpeg_kit_flutter_new_video/ffmpeg_kit.dart';
+import 'package:ffmpeg_kit_flutter_new_video/return_code.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -52,6 +54,7 @@ class _CameraScreenState extends State<CameraScreen> {
   bool _busy = false;
   bool _recording = false;
   bool _grid = true;
+  String _compositionGuide = 'Thirds';
   bool _showSettings = false;
   bool _focusLocked = false;
   bool _exposureLocked = false;
@@ -433,13 +436,38 @@ class _CameraScreenState extends State<CameraScreen> {
       setState(() => _busy = true);
       try {
         final video = await camera.stopVideoRecording();
-        await Gal.putVideo(video.path, album: 'OpenLens Pro');
+        var savedVideoPath = video.path;
+        final hasGrade = _activePreset != 'Auto' || _gradeBrightness != 0 || _gradeContrast != 1 || _gradeSaturation != 1 || _gradeWarmth != 0 || _gradeTint != 0;
+        if (hasGrade) {
+          final gradedPath = '${video.path}.openlens-graded.mp4';
+          final input = _ffmpegQuote(video.path);
+          final output = _ffmpegQuote(gradedPath);
+          final brightness = (_gradeBrightness + _gradeWarmth * 0.025).clamp(-0.5, 0.5).toStringAsFixed(3);
+          final contrast = _gradeContrast.clamp(0.5, 2.0).toStringAsFixed(3);
+          final saturation = _gradeSaturation.clamp(0.0, 2.0).toStringAsFixed(3);
+          final red = (_gradeWarmth * 0.12 + _gradeTint * 0.025).clamp(-0.2, 0.2).toStringAsFixed(3);
+          final blue = (-_gradeWarmth * 0.12 + _gradeTint * 0.025).clamp(-0.2, 0.2).toStringAsFixed(3);
+          final green = (-_gradeTint * 0.05).clamp(-0.1, 0.1).toStringAsFixed(3);
+          final filter = 'eq=brightness=$brightness:contrast=$contrast:saturation=$saturation,colorbalance=rs=$red:gs=$green:bs=$blue';
+          try {
+            final session = await FFmpegKit.execute('-y -i $input -vf "$filter" -c:v mpeg4 -q:v 3 -c:a copy -movflags +faststart $output');
+            final code = await session.getReturnCode();
+            if (ReturnCode.isSuccess(code) && await File(gradedPath).exists() && await File(gradedPath).length() > 0) {
+              savedVideoPath = gradedPath;
+            } else {
+              _showMessage('Could not export the video grade; saving the original recording instead.');
+            }
+          } catch (_) {
+            _showMessage('Video grading failed; saving the original recording instead.');
+          }
+        }
+        await Gal.putVideo(savedVideoPath, album: 'OpenLens Pro');
         if (!mounted) return;
         setState(() {
           _recording = false;
-          _status = 'Video saved to gallery · ${video.name}';
+          _status = hasGrade && savedVideoPath != video.path ? 'Graded video saved to gallery' : 'Video saved to gallery · ${video.name}';
         });
-        _showMessage('Video saved to your gallery.');
+        _showMessage(hasGrade && savedVideoPath != video.path ? 'Filtered video saved to your gallery.' : 'Video saved to your gallery.');
       } catch (e) {
         if (mounted) {
           setState(() => _status = 'Could not save video: $e');
@@ -470,6 +498,8 @@ class _CameraScreenState extends State<CameraScreen> {
       }
     }
   }
+
+  String _ffmpegQuote(String path) => "'${path.replaceAll("'", "'\\\\''")}'";
 
   Future<void> _captureAction() async {
     if (_mode == 'VIDEO') {
@@ -775,7 +805,7 @@ class _CameraScreenState extends State<CameraScreen> {
                     )
                   else
                     _cameraPlaceholder(),
-                  if (_grid) const IgnorePointer(child: _CompositionGrid()),
+                  if (_grid) IgnorePointer(child: _CompositionGrid(mode: _compositionGuide)),
                   if (_countdownRemaining != null)
                     Center(
                       child: Container(
@@ -859,9 +889,21 @@ class _CameraScreenState extends State<CameraScreen> {
               ),
             ),
             IconButton(
-              tooltip: 'Composition grid',
+              tooltip: 'Toggle composition guide',
               onPressed: () => setState(() => _grid = !_grid),
               icon: Icon(_grid ? Icons.grid_on_rounded : Icons.grid_off_rounded),
+            ),
+            PopupMenuButton<String>(
+              tooltip: 'Choose composition guide',
+              initialValue: _compositionGuide,
+              onSelected: (value) => setState(() { _compositionGuide = value; _grid = true; }),
+              itemBuilder: (context) => const [
+                PopupMenuItem(value: 'Thirds', child: Text('Rule of thirds')),
+                PopupMenuItem(value: 'Center', child: Text('Center crosshair')),
+                PopupMenuItem(value: 'Portrait', child: Text('Portrait frame')),
+                PopupMenuItem(value: 'Golden', child: Text('Golden ratio')),
+              ],
+              icon: const Icon(Icons.crop_free_rounded),
             ),
             IconButton(
               tooltip: 'Camera settings',
@@ -1299,36 +1341,42 @@ class _HistogramPainter extends CustomPainter {
 }
 
 class _CompositionGrid extends StatelessWidget {
-  const _CompositionGrid();
+  const _CompositionGrid({required this.mode});
+  final String mode;
 
   @override
-  Widget build(BuildContext context) {
-    return CustomPaint(painter: _GridPainter());
-  }
+  Widget build(BuildContext context) => CustomPaint(painter: _GridPainter(mode));
 }
 
 class _GridPainter extends CustomPainter {
+  const _GridPainter(this.mode);
+  final String mode;
+
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.38)
-      ..strokeWidth = 0.7;
-    for (var i = 1; i < 3; i++) {
-      final x = size.width * i / 3;
-      final y = size.height * i / 3;
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    final paint = Paint()..color = Colors.white.withValues(alpha: 0.42)..strokeWidth = 0.8;
+    if (mode == 'Thirds' || mode == 'Golden') {
+      final ratio = mode == 'Golden' ? 0.382 : 1 / 3;
+      for (final fraction in [ratio, 1 - ratio]) {
+        canvas.drawLine(Offset(size.width * fraction, 0), Offset(size.width * fraction, size.height), paint);
+        canvas.drawLine(Offset(0, size.height * fraction), Offset(size.width, size.height * fraction), paint);
+      }
+    } else if (mode == 'Center') {
+      canvas.drawLine(Offset(size.width / 2, 0), Offset(size.width / 2, size.height), paint);
+      canvas.drawLine(Offset(0, size.height / 2), Offset(size.width, size.height / 2), paint);
+      final centerPaint = Paint()..color = const Color(0xFFB8F36B)..style = PaintingStyle.stroke..strokeWidth = 1.5;
+      canvas.drawCircle(Offset(size.width / 2, size.height / 2), 20, centerPaint);
+    } else {
+      final frame = Rect.fromCenter(center: Offset(size.width / 2, size.height / 2), width: size.width * 0.68, height: size.height * 0.62);
+      final framePaint = Paint()..color = const Color(0xFFB8F36B)..style = PaintingStyle.stroke..strokeWidth = 1.6;
+      canvas.drawRRect(RRect.fromRectAndRadius(frame, const Radius.circular(70)), framePaint);
+      canvas.drawLine(Offset(size.width / 2, frame.top), Offset(size.width / 2, frame.bottom), paint..color = Colors.white.withValues(alpha: 0.20));
     }
-    final cornerPaint = Paint()
-      ..color = const Color(0xFFB8F36B)
-      ..strokeWidth = 2.5
-      ..strokeCap = StrokeCap.round;
-    const length = 22.0;
-    const inset = 16.0;
+    final cornerPaint = Paint()..color = const Color(0xFFB8F36B)..strokeWidth = 2.5..strokeCap = StrokeCap.round;
+    const length = 22.0, inset = 16.0;
     for (final x in [inset, size.width - inset]) {
       for (final y in [inset, size.height - inset]) {
-        final dx = x == inset ? 1.0 : -1.0;
-        final dy = y == inset ? 1.0 : -1.0;
+        final dx = x == inset ? 1.0 : -1.0, dy = y == inset ? 1.0 : -1.0;
         canvas.drawLine(Offset(x, y), Offset(x + dx * length, y), cornerPaint);
         canvas.drawLine(Offset(x, y), Offset(x, y + dy * length), cornerPaint);
       }
@@ -1336,7 +1384,7 @@ class _GridPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _GridPainter oldDelegate) => oldDelegate.mode != mode;
 }
 
 
