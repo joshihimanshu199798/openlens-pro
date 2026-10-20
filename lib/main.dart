@@ -685,12 +685,12 @@ class _CameraScreenState extends State<CameraScreen> {
           children: [
             _topBar(),
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
               child: Material(
-                color: const Color(0xFF1A2115),
-                borderRadius: BorderRadius.circular(14),
+                color: const Color(0xFF171D19),
+                borderRadius: BorderRadius.circular(16),
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                   onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
                     builder: (_) => _PresetLibraryPage(
                       presets: [..._presets, ..._libraryPresets, ..._customPresets],
@@ -700,19 +700,26 @@ class _CameraScreenState extends State<CameraScreen> {
                   )),
                   child: Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFB8F36B).withValues(alpha: .75)),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFF35432C)),
                     ),
-                    child: const Row(children: [
-                      Icon(Icons.auto_awesome_mosaic_rounded, color: Color(0xFFB8F36B), size: 22),
-                      SizedBox(width: 10),
+                    child: Row(children: [
+                      Container(
+                        width: 40, height: 40,
+                        decoration: BoxDecoration(color: const Color(0xFFB8F36B), borderRadius: BorderRadius.circular(12)),
+                        child: const Icon(Icons.palette_rounded, color: Colors.black, size: 22),
+                      ),
+                      const SizedBox(width: 12),
                       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                        Text('PRESET LIBRARY', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 1.1)),
-                        Text('100+ looks · Browse by category', style: TextStyle(fontSize: 10, color: Colors.white70)),
+                        const Text('CURRENT LOOK', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.white60, letterSpacing: 1.1)),
+                        const SizedBox(height: 2),
+                        Text(_activePreset, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                        Text('Tap to browse and apply a look', style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: .68))),
                       ])),
-                      Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFFB8F36B), size: 15),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.tune_rounded, color: Color(0xFFB8F36B), size: 22),
                     ]),
                   ),
                 ),
@@ -812,15 +819,6 @@ class _CameraScreenState extends State<CameraScreen> {
                   Text('PRO CAMERA', style: TextStyle(fontSize: 10, color: Colors.white54, letterSpacing: 2)),
                 ],
               ),
-            ),
-            IconButton(
-              tooltip: 'Browse preset library',
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => _PresetLibraryPage(
-                presets: [..._presets, ..._libraryPresets, ..._customPresets],
-                activePreset: _activePreset,
-                onApply: (preset) { Navigator.of(context).pop(); _applyPreset(preset); },
-              ))),
-              icon: const Icon(Icons.auto_awesome_mosaic_rounded, color: Color(0xFFB8F36B)),
             ),
             IconButton(
               tooltip: 'Composition grid',
@@ -942,11 +940,11 @@ class _CameraScreenState extends State<CameraScreen> {
       );
 
   Widget _presetTray() => Container(
-        padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+        padding: const EdgeInsets.fromLTRB(10, 9, 10, 10),
         decoration: BoxDecoration(
-          color: const Color(0xD9080A0C),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0x443F474D)),
+          color: const Color(0xE6101315),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0x55465056)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -954,11 +952,22 @@ class _CameraScreenState extends State<CameraScreen> {
           children: [
             Row(
               children: [
-                const Text('SIGNATURE PRESETS · COLOUR GRADING',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.4)),
+                const Icon(Icons.auto_awesome_rounded, size: 15, color: Color(0xFFB8F36B)),
+                const SizedBox(width: 6),
+                const Text('QUICK LOOKS',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
                 const Spacer(),
-                Text(_activePreset.toUpperCase(),
-                    style: const TextStyle(fontSize: 9, color: Color(0xFFB8F36B), letterSpacing: 1)),
+                TextButton(
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => _PresetLibraryPage(
+                      presets: [..._presets, ..._libraryPresets, ..._customPresets],
+                      activePreset: _activePreset,
+                      onApply: (preset) { Navigator.of(context).pop(); _applyPreset(preset); },
+                    ),
+                  )),
+                  style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8), minimumSize: const Size(0, 30)),
+                  child: const Text('All looks  ›', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -1341,104 +1350,186 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final categoryNames = widget.presets.map((p) => p.category).where((c) => c != 'Signature').toSet().toList()..sort();
+    final categoryNames = widget.presets
+        .map((p) => p.category)
+        .where((c) => c != 'Signature')
+        .toSet()
+        .toList()
+      ..sort();
     final categories = <String>['All', ...categoryNames];
+    final query = _query.trim().toLowerCase();
     final filtered = widget.presets.where((p) =>
       (_category == 'All' || p.category == _category) &&
-      ('${p.name} ${p.hint} ${p.category}'.toLowerCase().contains(_query.toLowerCase()))).toList();
+      ('${p.name} ${p.hint} ${p.category}'.toLowerCase().contains(query))).toList();
+    final active = widget.presets.where((p) => p.name == widget.activePreset).firstOrNull;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('PRESET LIBRARY', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2, fontSize: 16)),
-          Text('100+ curated colour grades', style: TextStyle(fontSize: 11, color: Colors.white60)),
-        ]),
+        titleSpacing: 18,
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Find your look', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 19)),
+            Text('Search, preview and apply in one tap', style: TextStyle(fontSize: 11, color: Colors.white60)),
+          ],
+        ),
         backgroundColor: const Color(0xFF080A0C),
       ),
-      body: Column(children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
-          child: TextField(
-            onChanged: (value) => setState(() => _query = value),
-            decoration: InputDecoration(
-              hintText: 'Search presets, moods, categories…',
-              prefixIcon: const Icon(Icons.search_rounded),
-              filled: true,
-              fillColor: const Color(0xFF171C1F),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-              isDense: true,
+      body: Column(
+        children: [
+          if (active != null)
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1B2417),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFF455735)),
+              ),
+              child: Row(children: [
+                const Icon(Icons.check_circle_rounded, color: Color(0xFFB8F36B), size: 22),
+                const SizedBox(width: 10),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Text('APPLIED NOW', style: TextStyle(fontSize: 9, color: Colors.white60, fontWeight: FontWeight.w800, letterSpacing: 1)),
+                  const SizedBox(height: 2),
+                  Text(active.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+                ])),
+                TextButton(
+                  onPressed: () => widget.onApply(widget.presets.firstWhere((p) => p.name == 'Auto', orElse: () => widget.presets.first)),
+                  child: const Text('Reset'),
+                ),
+              ]),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: TextField(
+              onChanged: (value) => setState(() => _query = value),
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: 'Search by look or mood…',
+                prefixIcon: const Icon(Icons.search_rounded),
+                suffixIcon: _query.isEmpty ? null : IconButton(
+                  tooltip: 'Clear search',
+                  onPressed: () => setState(() => _query = ''),
+                  icon: const Icon(Icons.close_rounded),
+                ),
+                filled: true,
+                fillColor: const Color(0xFF171C1F),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF2B3338))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFB8F36B), width: 1.4)),
+                isDense: true,
+              ),
             ),
           ),
-        ),
-        SizedBox(
-          height: 48,
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            scrollDirection: Axis.horizontal,
-            children: categories.map((category) => Padding(
-              padding: const EdgeInsets.only(right: 7),
-              child: ChoiceChip(
-                label: Text(category),
-                selected: _category == category,
-                onSelected: (_) => setState(() => _category = category),
-                selectedColor: const Color(0xFFB8F36B),
-                labelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
-                  color: _category == category ? Colors.black : Colors.white),
-              ),
-            )).toList(),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: Row(children: [
-            Text('${filtered.length} PRESETS', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.3, color: Color(0xFFB8F36B))),
-            const Spacer(),
-            const Text('Tap to apply', style: TextStyle(fontSize: 10, color: Colors.white54)),
-          ]),
-        ),
-        Expanded(
-          child: filtered.isEmpty
-            ? const Center(child: Text('No presets match your search.'))
-            : GridView.builder(
-                padding: const EdgeInsets.fromLTRB(12, 2, 12, 18),
-                itemCount: filtered.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 1.55,
-                ),
-                itemBuilder: (context, index) {
-                  final preset = filtered[index];
-                  final selected = preset.name == widget.activePreset;
-                  return Material(
-                    color: selected ? const Color(0xFF27331A) : const Color(0xFF151A1D),
-                    borderRadius: BorderRadius.circular(16),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () => widget.onApply(preset),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: selected ? const Color(0xFFB8F36B) : const Color(0xFF2C3337)),
-                        ),
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Row(children: [
-                            Icon(preset.icon, size: 19, color: const Color(0xFFB8F36B)),
-                            const Spacer(),
-                            if (selected) const Icon(Icons.check_circle_rounded, size: 16, color: Color(0xFFB8F36B)),
-                          ]),
-                          const Spacer(),
-                          Text(preset.name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
-                          const SizedBox(height: 3),
-                          Text(preset.category.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 9, color: Colors.white54, letterSpacing: .7)),
-                        ]),
-                      ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: Row(children: [
+              const Icon(Icons.filter_list_rounded, color: Color(0xFFB8F36B), size: 20),
+              const SizedBox(width: 8),
+              const Text('Category', style: TextStyle(fontSize: 12, color: Colors.white70, fontWeight: FontWeight.w600)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  height: 44,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF171C1F),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF30383D)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _category,
+                      isExpanded: true,
+                      dropdownColor: const Color(0xFF171C1F),
+                      borderRadius: BorderRadius.circular(12),
+                      items: categories.map((category) => DropdownMenuItem<String>(
+                        value: category,
+                        child: Text(category == 'All' ? 'All looks' : category, overflow: TextOverflow.ellipsis),
+                      )).toList(),
+                      onChanged: (value) { if (value != null) setState(() => _category = value); },
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
-        ),
-      ]),
+            ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 2, 18, 8),
+            child: Row(children: [
+              Text('${filtered.length} looks', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+              const Spacer(),
+              const Text('Tap a look to apply it', style: TextStyle(fontSize: 11, color: Colors.white54)),
+            ]),
+          ),
+          Expanded(
+            child: filtered.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(28),
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.search_off_rounded, size: 42, color: Colors.white38),
+                      const SizedBox(height: 10),
+                      const Text('No matching looks', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 5),
+                      const Text('Try another name or choose a different category.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white60, fontSize: 12)),
+                      const SizedBox(height: 12),
+                      OutlinedButton(onPressed: () => setState(() { _query = ''; _category = 'All'; }), child: const Text('Clear filters')),
+                    ]),
+                  ),
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 24),
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final preset = filtered[index];
+                    final selected = preset.name == widget.activePreset;
+                    return Material(
+                      color: selected ? const Color(0xFF202B19) : const Color(0xFF14191C),
+                      borderRadius: BorderRadius.circular(16),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () => widget.onApply(preset),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: selected ? const Color(0xFFB8F36B) : const Color(0xFF2B3338)),
+                          ),
+                          child: Row(children: [
+                            Container(
+                              width: 44, height: 44,
+                              decoration: BoxDecoration(
+                                color: selected ? const Color(0xFFB8F36B) : const Color(0xFF252D31),
+                                borderRadius: BorderRadius.circular(13),
+                              ),
+                              child: Icon(preset.icon, color: selected ? Colors.black : const Color(0xFFB8F36B), size: 22),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text(preset.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                              const SizedBox(height: 3),
+                              Text(preset.category == 'Signature' ? preset.hint : preset.category,
+                                maxLines: 1, overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 11, color: Colors.white60)),
+                            ])),
+                            const SizedBox(width: 8),
+                            if (selected)
+                              const Icon(Icons.check_circle_rounded, color: Color(0xFFB8F36B), size: 22)
+                            else
+                              const Icon(Icons.chevron_right_rounded, color: Colors.white54, size: 24),
+                          ]),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+          ),
+        ],
+      ),
     );
   }
 }
