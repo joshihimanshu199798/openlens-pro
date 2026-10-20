@@ -1066,10 +1066,22 @@ class _CameraScreenState extends State<CameraScreen> {
                     builder: (_) => _PresetLibraryPage(
                       presets: [..._presets, ..._libraryPresets, ..._customPresets],
                       activePreset: _activePreset,
+                      initialCategory: 'Old Camera',
                       onApply: (preset) { Navigator.of(context).pop(); _applyPreset(preset); },
                     ),
                   )),
-                  style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8), minimumSize: const Size(0, 30)),
+                  style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 6), minimumSize: const Size(0, 30)),
+                  child: const Text('Old cameras', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (_) => _PresetLibraryPage(
+                      presets: [..._presets, ..._libraryPresets, ..._customPresets],
+                      activePreset: _activePreset,
+                      onApply: (preset) { Navigator.of(context).pop(); _applyPreset(preset); },
+                    ),
+                  )),
+                  style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 6), minimumSize: const Size(0, 30)),
                   child: const Text('All looks  ›', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
                 ),
               ],
@@ -1445,8 +1457,9 @@ class _SignaturePreset {
 
 
 class _PresetLibraryPage extends StatefulWidget {
-  const _PresetLibraryPage({required this.presets, required this.activePreset, required this.onApply});
+  const _PresetLibraryPage({required this.presets, required this.activePreset, required this.onApply, this.initialCategory = 'All'});
   final List<_SignaturePreset> presets;
+  final String initialCategory;
   final String activePreset;
   final ValueChanged<_SignaturePreset> onApply;
 
@@ -1466,6 +1479,7 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
   @override
   void initState() {
     super.initState();
+    _category = widget.initialCategory;
     _loadPersonalLists();
   }
 
