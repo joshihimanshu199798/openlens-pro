@@ -899,39 +899,6 @@ class _CameraScreenState extends State<CameraScreen> {
         icon: Icon(icon, color: active ? const Color(0xFFB8F36B) : Colors.white.withValues(alpha: .88), size: 23),
       );
 
-  Widget _quickLooksBar() {
-    final presets = _quickLookNames
-        .map((name) => _allPresets.where((p) => p.name == name).firstOrNull)
-        .whereType<_SignaturePreset>()
-        .toList();
-    if (presets.isEmpty) return const SizedBox.shrink();
-    return SizedBox(
-      height: 58,
-      child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
-        scrollDirection: Axis.horizontal,
-        itemCount: presets.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final preset = presets[index];
-          final selected = preset.name == _activePreset;
-          return OutlinedButton.icon(
-            onPressed: _busy || _recording ? null : () => _applyQuickLook(preset),
-            icon: Icon(preset.icon, size: 16),
-            label: Text(preset.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: selected ? Colors.black : const Color(0xFFB8F36B),
-              backgroundColor: selected ? const Color(0xFFB8F36B) : const Color(0xFF171D19),
-              side: BorderSide(color: selected ? const Color(0xFFB8F36B) : const Color(0xFF35432C)),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              visualDensity: VisualDensity.compact,
-            ),
-          );
-        },
-      ),
-    );
-  }
-
   Widget _cameraPlaceholder() => Container(
         color: const Color(0xFF15191C),
         alignment: Alignment.center,
@@ -999,86 +966,6 @@ class _CameraScreenState extends State<CameraScreen> {
           Text(_status, maxLines: 1, overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 10, color: Colors.white38)),
         ]),
-      );
-
-  Widget _presetTray() => Container(
-        padding: const EdgeInsets.fromLTRB(10, 9, 10, 10),
-        decoration: BoxDecoration(
-          color: const Color(0xE6101315),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0x55465056)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.auto_awesome_rounded, size: 15, color: Color(0xFFB8F36B)),
-                const SizedBox(width: 6),
-                const Text('QUICK LOOKS',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-                const Spacer(),
-                TextButton(
-                  onPressed: () async {
-                    final preset = await Navigator.of(context).push<_SignaturePreset>(
-                      MaterialPageRoute<_SignaturePreset>(
-                        builder: (_) => _PresetLibraryPage(
-                          presets: [..._presets, ..._libraryPresets, ..._customPresets],
-                          activePreset: _activePreset,
-                          onApply: (preset) => Navigator.of(context).pop(preset),
-                        ),
-                      ),
-                    );
-                    if (preset != null && mounted) await _applyPreset(preset);
-                  },
-                  style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8), minimumSize: const Size(0, 30)),
-                  child: const Text('All looks  ›', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 58,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _allPresets.length + 1,
-                separatorBuilder: (_, __) => const SizedBox(width: 7),
-                itemBuilder: (context, index) {
-                  if (index == _allPresets.length) return InkWell(borderRadius: BorderRadius.circular(13), onTap: _importCustomPreset, child: Container(width: 82, decoration: BoxDecoration(color: const Color(0xFF1A2023), borderRadius: BorderRadius.circular(13), border: Border.all(color: const Color(0xFFB8F36B))), child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.add_rounded, color: Color(0xFFB8F36B), size: 19), SizedBox(height: 3), Text('IMPORT', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800))])));
-                  final preset = _allPresets[index];
-                  final selected = preset.name == _activePreset;
-                  return InkWell(
-                    borderRadius: BorderRadius.circular(13),
-                    onTap: () => _applyPreset(preset),
-                    child: Container(
-                      width: 91,
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: selected ? const Color(0xFFB8F36B) : const Color(0xFF1A2023),
-                        borderRadius: BorderRadius.circular(13),
-                        border: Border.all(color: selected ? const Color(0xFFB8F36B) : const Color(0xFF343B3F)),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(preset.icon, size: 17, color: selected ? Colors.black : const Color(0xFFB8F36B)),
-                          const SizedBox(height: 3),
-                          Text(preset.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800,
-                                  color: selected ? Colors.black : Colors.white)),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
       );
 
   Widget _settingsPanel() => Container(
