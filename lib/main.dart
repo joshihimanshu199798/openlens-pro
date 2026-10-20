@@ -892,7 +892,7 @@ class _CameraScreenState extends State<CameraScreen> {
                 children: [
                   Text('OPENLENS', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.7)),
                   SizedBox(height: 2),
-                  Text('MAKE IT A MEMORY', style: TextStyle(fontSize: 9, color: Colors.white54, letterSpacing: 1.5, fontWeight: FontWeight.w700)),
+                  Text('PRO CAMERA', style: TextStyle(fontSize: 9, color: Colors.white54, letterSpacing: 1.5, fontWeight: FontWeight.w700)),
                 ],
               ),
             ),
