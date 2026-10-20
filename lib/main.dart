@@ -1053,7 +1053,7 @@ class _CameraScreenState extends State<CameraScreen> {
                 const Text('Burst ×3', style: TextStyle(fontSize: 11)),
                 Switch.adaptive(
                   value: _burstMode,
-                  activeColor: const Color(0xFFB8F36B),
+                  activeThumbColor: const Color(0xFFB8F36B),
                   onChanged: _busy ? null : (value) => setState(() => _burstMode = value),
                 ),
               ],
