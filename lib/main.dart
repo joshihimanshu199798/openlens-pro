@@ -76,6 +76,8 @@ class _CameraScreenState extends State<CameraScreen> {
   double _maxExposure = 0;
   FlashMode _flash = FlashMode.off;
   String _activePreset = 'Auto';
+  List<String> _quickLookNames = ['Auto', 'Monsoon Chrome', 'Neon Bazaar', 'Moonmilk'];
+  static const String _quickLooksKey = 'openlens_quick_looks_v1';
   static const String _customPresetsKey = 'openlens_custom_presets_v1';
   List<_SignaturePreset> _customPresets = [];
   double _gradeBrightness = 0;
@@ -205,6 +207,7 @@ class _CameraScreenState extends State<CameraScreen> {
   void initState() {
     super.initState();
     _loadCustomPresets();
+    _loadQuickLooks();
     _initializeCamera();
   }
 
@@ -261,7 +264,35 @@ class _CameraScreenState extends State<CameraScreen> {
   }
 
 
-  List<_SignaturePreset> get _allPresets => [..._presets, ..._customPresets];
+  List<_SignaturePreset> get _allPresets => [..._presets, ..._libraryPresets, ..._customPresets];
+
+  Future<void> _loadQuickLooks() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getStringList(_quickLooksKey);
+      if (!mounted || saved == null || saved.isEmpty) return;
+      final validNames = _allPresets.map((p) => p.name).toSet();
+      setState(() => _quickLookNames = saved.where(validNames.contains).take(6).toList());
+    } catch (_) {
+      // Quick looks are a convenience; never block camera startup.
+    }
+  }
+
+  Future<void> _rememberQuickLook(_SignaturePreset preset) async {
+    final next = <String>[preset.name, ..._quickLookNames.where((name) => name != preset.name)];
+    if (next.length > 6) next.removeRange(6, next.length);
+    if (mounted) setState(() => _quickLookNames = next);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_quickLooksKey, next);
+    } catch (_) {
+      // Keep the in-memory quick look even if persistence is unavailable.
+    }
+  }
+
+  Future<void> _applyQuickLook(_SignaturePreset preset) async {
+    await _applyPreset(preset);
+  }
 
   Future<void> _loadCustomPresets() async {
     final prefs = await SharedPreferences.getInstance();
@@ -565,6 +596,8 @@ class _CameraScreenState extends State<CameraScreen> {
       });
     }
 
+    _rememberQuickLook(preset);
+
     final targetExposure = preset.exposure.clamp(_minExposure, _maxExposure).toDouble();
     final targetZoom = (_minZoom * preset.zoomFactor).clamp(_minZoom, _maxZoom).toDouble();
     var hardwareWarning = false;
@@ -818,6 +851,7 @@ class _CameraScreenState extends State<CameraScreen> {
                 ),
               ),
             ),
+            _quickLooksBar(),
             Expanded(
               child: Stack(
                 fit: StackFit.expand,
@@ -938,6 +972,39 @@ class _CameraScreenState extends State<CameraScreen> {
           ],
         ),
       );
+
+  Widget _quickLooksBar() {
+    final presets = _quickLookNames
+        .map((name) => _allPresets.where((p) => p.name == name).firstOrNull)
+        .whereType<_SignaturePreset>()
+        .toList();
+    if (presets.isEmpty) return const SizedBox.shrink();
+    return SizedBox(
+      height: 58,
+      child: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+        scrollDirection: Axis.horizontal,
+        itemCount: presets.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final preset = presets[index];
+          final selected = preset.name == _activePreset;
+          return OutlinedButton.icon(
+            onPressed: _busy || _recording ? null : () => _applyQuickLook(preset),
+            icon: Icon(preset.icon, size: 16),
+            label: Text(preset.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: selected ? Colors.black : const Color(0xFFB8F36B),
+              backgroundColor: selected ? const Color(0xFFB8F36B) : const Color(0xFF171D19),
+              side: BorderSide(color: selected ? const Color(0xFFB8F36B) : const Color(0xFF35432C)),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              visualDensity: VisualDensity.compact,
+            ),
+          );
+        },
+      ),
+    );
+  }
 
   Widget _cameraPlaceholder() => Container(
         color: const Color(0xFF15191C),
@@ -1627,38 +1694,27 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-            child: Row(children: [
-              const Icon(Icons.filter_list_rounded, color: Color(0xFFB8F36B), size: 20),
-              const SizedBox(width: 8),
-              const Text('Category', style: TextStyle(fontSize: 12, color: Colors.white70, fontWeight: FontWeight.w600)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Container(
-                  height: 44,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF171C1F),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF30383D)),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _category,
-                      isExpanded: true,
-                      dropdownColor: const Color(0xFF171C1F),
-                      borderRadius: BorderRadius.circular(12),
-                      items: categories.map((category) => DropdownMenuItem<String>(
-                        value: category,
-                        child: Text(category == 'All' ? 'All looks' : category, overflow: TextOverflow.ellipsis),
-                      )).toList(),
-                      onChanged: (value) { if (value != null) setState(() => _category = value); },
-                    ),
-                  ),
-                ),
-              ),
-            ]),
+          SizedBox(
+            height: 42,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              scrollDirection: Axis.horizontal,
+              itemCount: categories.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 7),
+              itemBuilder: (context, index) {
+                final category = categories[index];
+                final selected = _category == category;
+                return ChoiceChip(
+                  label: Text(category == 'All' ? 'All looks' : category),
+                  selected: selected,
+                  onSelected: (_) => setState(() => _category = category),
+                  selectedColor: const Color(0xFFB8F36B),
+                  labelStyle: TextStyle(color: selected ? Colors.black : Colors.white70, fontSize: 11, fontWeight: FontWeight.w700),
+                  side: BorderSide(color: selected ? const Color(0xFFB8F36B) : const Color(0xFF30383D)),
+                  visualDensity: VisualDensity.compact,
+                );
+              },
+            ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
