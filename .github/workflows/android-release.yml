@@ -1,0 +1,98 @@
+name: OpenLens Pro Android Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openlens-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Generate Android platform files if missing
+        run: flutter create --platforms=android --org com.openlenspro --project-name openlens_pro .
+
+      - name: Configure Android permissions and minimum SDK
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          manifest = Path("android/app/src/main/AndroidManifest.xml")
+          text = manifest.read_text()
+          permissions = [
+              "android.permission.CAMERA",
+              "android.permission.RECORD_AUDIO",
+          ]
+          insert = "".join(f'    <uses-permission android:name="{p}" />\\n' for p in permissions if f'android:name="{p}"' not in text)
+          if insert:
+              match = re.search(r'<manifest\\b[^>]*>', text)
+              if not match:
+                  raise SystemExit("Could not find Android manifest root element")
+              text = text[:match.end()] + "\\n" + insert + text[match.end():]
+              manifest.write_text(text)
+
+          gradle_files = [Path("android/app/build.gradle.kts"), Path("android/app/build.gradle")]
+          found = False
+          for gradle in gradle_files:
+              if not gradle.exists():
+                  continue
+              source = gradle.read_text()
+              updated = re.sub(r'minSdk\\s*=\\s*flutter\\.minSdkVersion', 'minSdk = 24', source)
+              updated = re.sub(r'minSdkVersion\\s+flutter\\.minSdkVersion', 'minSdkVersion 24', updated)
+              if updated != source:
+                  gradle.write_text(updated)
+                  found = True
+          if not found:
+              print("No default minSdk expression found; checking generated Gradle files.")
+          PY
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Analyze Dart source
+        run: flutter analyze
+
+      - name: Run Flutter tests
+        run: flutter test
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Verify APK output
+        run: |
+          test -s build/app/outputs/flutter-apk/app-release.apk
+          ls -lh build/app/outputs/flutter-apk/app-release.apk
+          sha256sum build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Upload verified release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: openlens-pro-v0.3.0-verified-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          retention-days: 14
