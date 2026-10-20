@@ -568,41 +568,39 @@ class _CameraScreenState extends State<CameraScreen> {
   Future<void> _applyPreset(_SignaturePreset preset) async {
     final camera = _controller;
     if (camera == null || !camera.value.isInitialized) {
-      _showMessage('Start the camera before applying a preset.');
+      _showMessage('Camera is not ready. Please wait and try again.');
       return;
     }
     if (_recording) {
       _showMessage('Stop recording before changing presets.');
       return;
     }
+    // Digital grading must not depend on optional camera controls succeeding.
     final targetExposure = preset.exposure.clamp(_minExposure, _maxExposure).toDouble();
     final targetZoom = (_minZoom * preset.zoomFactor).clamp(_minZoom, _maxZoom).toDouble();
-    try {
-      await camera.setExposureOffset(targetExposure);
-      await camera.setZoomLevel(targetZoom);
-      try {
-        await camera.setFlashMode(preset.flash);
-        _flash = preset.flash;
-      } catch (_) {
-        // Flash is optional; keep the rest of the preset when unavailable.
-      }
-      if (!mounted) return;
-      setState(() {
-        _activePreset = preset.name;
-        _exposure = targetExposure;
-        _zoom = targetZoom;
-        _gradeBrightness = preset.brightness;
-        _gradeContrast = preset.contrast;
-        _gradeSaturation = preset.saturation;
-        _gradeWarmth = preset.warmth;
-        _gradeTint = preset.tint;
-        _showSettings = false;
-        _showFilters = false;
-      });
-      _showMessage('${preset.name} preset applied.');
-    } catch (_) {
-      _showMessage('This preset could not be fully applied on this camera.');
-    }
+    var exposureApplied = false;
+    var zoomApplied = false;
+    var flashApplied = false;
+    try { await camera.setExposureOffset(targetExposure); exposureApplied = true; } catch (_) {}
+    try { await camera.setZoomLevel(targetZoom); zoomApplied = true; } catch (_) {}
+    try { await camera.setFlashMode(preset.flash); _flash = preset.flash; flashApplied = true; } catch (_) {}
+    if (!mounted) return;
+    setState(() {
+      _activePreset = preset.name;
+      _exposure = exposureApplied ? targetExposure : _exposure;
+      _zoom = zoomApplied ? targetZoom : _zoom;
+      _gradeBrightness = preset.brightness;
+      _gradeContrast = preset.contrast;
+      _gradeSaturation = preset.saturation;
+      _gradeWarmth = preset.warmth;
+      _gradeTint = preset.tint;
+      _showSettings = false;
+      _showFilters = false;
+    });
+    final note = exposureApplied && zoomApplied && flashApplied
+        ? ''
+        : ' Camera controls may be limited, but the color look is applied.';
+    _showMessage('${preset.name} applied.$note');
   }
 
   Future<void> _setExposure(double value) async {
@@ -1529,8 +1527,8 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
         children: [
           if (active != null)
             Container(
-              margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               decoration: BoxDecoration(
                 color: const Color(0xFF1B2417),
                 borderRadius: BorderRadius.circular(16),
@@ -1551,7 +1549,7 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
               ]),
             ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: TextField(
               onChanged: (value) => setState(() => _query = value),
               textInputAction: TextInputAction.search,
@@ -1573,7 +1571,7 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: Row(children: [
               const Icon(Icons.filter_list_rounded, color: Color(0xFFB8F36B), size: 20),
               const SizedBox(width: 8),
@@ -1606,7 +1604,7 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
             ]),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
             child: Wrap(
               spacing: 8,
               children: ['All', 'Favorites', 'Recent'].map((view) => ChoiceChip(
@@ -1623,7 +1621,7 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 2, 18, 8),
+            padding: const EdgeInsets.fromLTRB(18, 2, 18, 6),
             child: Row(children: [
               Text('${filtered.length} looks', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
               const Spacer(),
@@ -1647,9 +1645,9 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
                   ),
                 )
               : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 24),
+                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 18),
                   itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  separatorBuilder: (_, __) => const SizedBox(height: 6),
                   itemBuilder: (context, index) {
                     final preset = filtered[index];
                     final selected = preset.name == widget.activePreset;
@@ -1663,14 +1661,14 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
                           if (context.mounted) widget.onApply(preset);
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(color: selected ? const Color(0xFFB8F36B) : const Color(0xFF2B3338)),
                           ),
                           child: Row(children: [
                             Container(
-                              width: 44, height: 44,
+                              width: 40, height: 40,
                               decoration: BoxDecoration(
                                 color: selected ? const Color(0xFFB8F36B) : const Color(0xFF252D31),
                                 borderRadius: BorderRadius.circular(13),
@@ -1680,7 +1678,7 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
                             const SizedBox(width: 12),
                             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                               Text(preset.name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
                               const SizedBox(height: 3),
                               Text(preset.category == 'Signature' ? preset.hint : preset.category,
                                 maxLines: 1, overflow: TextOverflow.ellipsis,
