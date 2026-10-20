@@ -290,9 +290,7 @@ class _CameraScreenState extends State<CameraScreen> {
     }
   }
 
-  Future<void> _applyQuickLook(_SignaturePreset preset) async {
-    await _applyPreset(preset);
-  }
+
 
   Future<void> _loadCustomPresets() async {
     final prefs = await SharedPreferences.getInstance();
