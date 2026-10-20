@@ -6,6 +6,7 @@ void main() {
     await tester.pumpWidget(const OpenLensApp());
     await tester.pump();
     expect(find.text('OPENLENS'), findsOneWidget);
-    expect(find.text('PRO CAMERA'), findsOneWidget);
+    expect(find.text('PRO CAMERA'), findsNothing);
+    expect(find.byTooltip('Filters and looks'), findsOneWidget);
   });
 }
