@@ -871,51 +871,72 @@ class _CameraScreenState extends State<CameraScreen> {
   }
 
   Widget _topBar() => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+        padding: const EdgeInsets.fromLTRB(18, 8, 14, 10),
         child: Row(
           children: [
             Container(
-              width: 38,
-              height: 38,
+              width: 42, height: 42,
               decoration: BoxDecoration(
-                color: const Color(0xFFB8F36B),
-                borderRadius: BorderRadius.circular(12),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFD7FF91), Color(0xFF9DDF4F)],
+                  begin: Alignment.topLeft, end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(15),
               ),
-              child: const Icon(Icons.camera_alt_rounded, color: Colors.black),
+              child: const Icon(Icons.camera_alt_rounded, color: Color(0xFF11150C), size: 23),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 11),
             const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('OPENLENS', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2)),
-                  Text('PRO CAMERA', style: TextStyle(fontSize: 10, color: Colors.white54, letterSpacing: 2)),
+                  Text('OPENLENS', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.7)),
+                  SizedBox(height: 2),
+                  Text('MAKE IT A MEMORY', style: TextStyle(fontSize: 9, color: Colors.white54, letterSpacing: 1.5, fontWeight: FontWeight.w700)),
                 ],
               ),
             ),
-            IconButton(
-              tooltip: 'Toggle composition guide',
-              onPressed: () => setState(() => _grid = !_grid),
-              icon: Icon(_grid ? Icons.grid_on_rounded : Icons.grid_off_rounded),
+            _topIconButton(
+              icon: _grid ? Icons.grid_4x4_rounded : Icons.grid_off_rounded,
+              tooltip: 'Composition grid',
+              onTap: () => setState(() => _grid = !_grid),
             ),
+            const SizedBox(width: 5),
             PopupMenuButton<String>(
-              tooltip: 'Choose composition guide',
+              tooltip: 'Composition guide',
               initialValue: _compositionGuide,
               onSelected: (value) => setState(() { _compositionGuide = value; _grid = true; }),
+              color: const Color(0xFF202629),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               itemBuilder: (context) => const [
                 PopupMenuItem(value: 'Thirds', child: Text('Rule of thirds')),
                 PopupMenuItem(value: 'Center', child: Text('Center crosshair')),
                 PopupMenuItem(value: 'Portrait', child: Text('Portrait frame')),
                 PopupMenuItem(value: 'Golden', child: Text('Golden ratio')),
               ],
-              icon: const Icon(Icons.crop_free_rounded),
+              icon: const Icon(Icons.crop_free_rounded, color: Colors.white70),
             ),
-            IconButton(
-              tooltip: 'Camera settings',
-              onPressed: () => setState(() => _showSettings = !_showSettings),
-              icon: Icon(_showSettings ? Icons.tune_rounded : Icons.settings_rounded),
+            const SizedBox(width: 2),
+            _topIconButton(
+              icon: _showSettings ? Icons.close_rounded : Icons.tune_rounded,
+              tooltip: 'Camera controls',
+              onTap: () => setState(() { _showSettings = !_showSettings; if (_showSettings) _showFilters = false; }),
             ),
           ],
+        ),
+      );
+
+  Widget _topIconButton({required IconData icon, required String tooltip, required VoidCallback onTap}) =>
+      Tooltip(
+        message: tooltip,
+        child: Material(
+          color: const Color(0xFF171C1F),
+          borderRadius: BorderRadius.circular(13),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(13),
+            onTap: onTap,
+            child: SizedBox(width: 40, height: 40, child: Icon(icon, size: 20, color: Colors.white70)),
+          ),
         ),
       );
 
