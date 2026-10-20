@@ -596,7 +596,7 @@ class _CameraScreenState extends State<CameraScreen> {
       });
     }
 
-    _rememberQuickLook(preset);
+    await _rememberQuickLook(preset);
 
     final targetExposure = preset.exposure.clamp(_minExposure, _maxExposure).toDouble();
     final targetZoom = (_minZoom * preset.zoomFactor).clamp(_minZoom, _maxZoom).toDouble();
