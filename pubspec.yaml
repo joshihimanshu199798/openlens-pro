@@ -1,7 +1,7 @@
 name: openlens_pro
 description: Free offline-first pro camera for Android.
 publish_to: "none"
-version: 0.2.0+2
+version: 0.3.0+3
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   camera: ^0.11.2+1
+  ffmpeg_kit_flutter_new_video: ^2.5.7
   gal: ^2.3.1
   permission_handler: ^12.0.1
   file_picker: ^10.3.2
