@@ -56,6 +56,9 @@ class _CameraScreenState extends State<CameraScreen> {
   bool _focusLocked = false;
   bool _exposureLocked = false;
   bool _showHistogram = false;
+  int _selfTimerSeconds = 0;
+  bool _burstMode = false;
+  int? _countdownRemaining;
   bool _histogramStreamRunning = false;
   List<double> _histogram = List<double>.filled(32, 0);
   double _highlightPercent = 0;
@@ -335,27 +338,53 @@ class _CameraScreenState extends State<CameraScreen> {
   Future<void> _takePhoto() async {
     final camera = _controller;
     if (camera == null || !camera.value.isInitialized || _busy) return;
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _countdownRemaining = null;
+    });
     try {
-      final photo = await camera.takePicture();
-      var savedPath = photo.path;
-      if (_activePreset != 'Auto' || _gradeBrightness != 0 || _gradeContrast != 1 || _gradeSaturation != 1 || _gradeWarmth != 0 || _gradeTint != 0) {
-        savedPath = '${photo.path}.graded.jpg';
-        await _applyGradeToFile(photo.path, savedPath);
+      if (_selfTimerSeconds > 0) {
+        for (var remaining = _selfTimerSeconds; remaining > 0; remaining--) {
+          if (!mounted) return;
+          setState(() => _countdownRemaining = remaining);
+          await Future<void>.delayed(const Duration(seconds: 1));
+        }
+        if (mounted) setState(() => _countdownRemaining = null);
       }
-      await Gal.putImage(savedPath, album: 'OpenLens Pro');
+      final shotCount = _burstMode ? 3 : 1;
+      for (var shot = 0; shot < shotCount; shot++) {
+        final photo = await camera.takePicture();
+        var savedPath = photo.path;
+        if (_activePreset != 'Auto' || _gradeBrightness != 0 || _gradeContrast != 1 || _gradeSaturation != 1 || _gradeWarmth != 0 || _gradeTint != 0) {
+          savedPath = '${photo.path}.graded.jpg';
+          await _applyGradeToFile(photo.path, savedPath);
+        }
+        await Gal.putImage(savedPath, album: 'OpenLens Pro');
+        if (shot + 1 < shotCount) {
+          await Future<void>.delayed(const Duration(milliseconds: 350));
+        }
+      }
       if (!mounted) return;
       setState(() {
-        _status = 'Graded photo saved to gallery · ${photo.name}';
+        _status = shotCount == 1
+            ? 'Photo saved to gallery'
+            : 'Burst complete · $shotCount photos saved';
       });
-      _showMessage('Photo saved to your gallery.');
+      _showMessage(shotCount == 1
+          ? 'Photo saved to your gallery.'
+          : '$shotCount burst photos saved to your gallery.');
     } catch (e) {
       if (mounted) {
         setState(() => _status = 'Capture failed: $e');
         _showMessage('Capture failed. Try again.');
       }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _countdownRemaining = null;
+        });
+      }
     }
   }
 
@@ -702,6 +731,23 @@ class _CameraScreenState extends State<CameraScreen> {
                   else
                     _cameraPlaceholder(),
                   if (_grid) const IgnorePointer(child: _CompositionGrid()),
+                  if (_countdownRemaining != null)
+                    Center(
+                      child: Container(
+                        width: 116,
+                        height: 116,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: .68),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFFB8F36B), width: 3),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '$_countdownRemaining',
+                          style: const TextStyle(fontSize: 64, height: 1, fontWeight: FontWeight.w900, color: Color(0xFFB8F36B)),
+                        ),
+                      ),
+                    ),
                   if (_showHistogram)
                     Positioned(
                       top: 58,
@@ -980,6 +1026,35 @@ class _CameraScreenState extends State<CameraScreen> {
                   visualDensity: VisualDensity.compact,
                   onPressed: () => setState(() => _showSettings = false),
                   icon: const Icon(Icons.close_rounded),
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                const Text('SELF TIMER', style: TextStyle(fontSize: 10, color: Colors.white60, letterSpacing: .6)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: DropdownButton<int>(
+                    value: _selfTimerSeconds,
+                    isExpanded: true,
+                    underline: const SizedBox.shrink(),
+                    items: const [
+                      DropdownMenuItem(value: 0, child: Text('Off')),
+                      DropdownMenuItem(value: 3, child: Text('3 seconds')),
+                      DropdownMenuItem(value: 5, child: Text('5 seconds')),
+                      DropdownMenuItem(value: 10, child: Text('10 seconds')),
+                    ],
+                    onChanged: _busy ? null : (value) {
+                      if (value != null) setState(() => _selfTimerSeconds = value);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text('Burst ×3', style: TextStyle(fontSize: 11)),
+                Switch.adaptive(
+                  value: _burstMode,
+                  activeColor: const Color(0xFFB8F36B),
+                  onChanged: _busy ? null : (value) => setState(() => _burstMode = value),
                 ),
               ],
             ),
