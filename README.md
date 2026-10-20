@@ -19,9 +19,13 @@ OpenLens Pro is an offline-first Android camera prototype built with Flutter.
 - Actual support for zoom, focus, flash and exposure depends on the device camera.
 
 ## Build an Android APK
-The GitHub Actions workflow runs Flutter analysis and tests, then builds a release APK. Open the repository's **Actions** tab and download the `openlens-pro-release-apk` artifact from a successful run.
+The GitHub Actions workflow runs Flutter analysis and tests, then builds a release APK. Open the repository's **Actions** tab and download the `openlens-pro-v0.3.0-verified-release-apk` artifact from a successful run. The workflow generates the Android platform scaffold when needed, sets the minimum Android SDK required by the video-processing dependency, and uploads the APK only after analysis, tests, and the release build succeed.
 
-For local builds, install Flutter and Android SDK, then run:
+For local builds, install Flutter and Android SDK. If the repository has no `android/` folder yet, first generate it with:
+```sh
+flutter create --platforms=android --org com.openlenspro --project-name openlens_pro .
+```
+Then run:
 ```sh
 flutter pub get
 flutter analyze
