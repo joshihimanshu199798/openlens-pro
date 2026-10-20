@@ -56,6 +56,7 @@ class _CameraScreenState extends State<CameraScreen> {
   bool _grid = true;
   String _compositionGuide = 'Thirds';
   bool _showSettings = false;
+  bool _showFilters = false;
   bool _focusLocked = false;
   bool _exposureLocked = false;
   bool _showHistogram = false;
@@ -596,6 +597,7 @@ class _CameraScreenState extends State<CameraScreen> {
         _gradeWarmth = preset.warmth;
         _gradeTint = preset.tint;
         _showSettings = false;
+        _showFilters = false;
       });
       _showMessage('${preset.name} preset applied.');
     } catch (_) {
@@ -776,47 +778,6 @@ class _CameraScreenState extends State<CameraScreen> {
         child: Column(
           children: [
             _topBar(),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-              child: Material(
-                color: const Color(0xFF171D19),
-                borderRadius: BorderRadius.circular(16),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                    builder: (_) => _PresetLibraryPage(
-                      presets: [..._presets, ..._libraryPresets, ..._customPresets],
-                      activePreset: _activePreset,
-                      onApply: (preset) { Navigator.of(context).pop(); _applyPreset(preset); },
-                    ),
-                  )),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFF35432C)),
-                    ),
-                    child: Row(children: [
-                      Container(
-                        width: 40, height: 40,
-                        decoration: BoxDecoration(color: const Color(0xFFB8F36B), borderRadius: BorderRadius.circular(12)),
-                        child: const Icon(Icons.palette_rounded, color: Colors.black, size: 22),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                        const Text('CURRENT LOOK', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.white60, letterSpacing: 1.1)),
-                        const SizedBox(height: 2),
-                        Text(_activePreset, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-                        Text('Tap to browse and apply a look', style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: .68))),
-                      ])),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.tune_rounded, color: Color(0xFFB8F36B), size: 22),
-                    ]),
-                  ),
-                ),
-              ),
-            ),
             Expanded(
               child: Stack(
                 fit: StackFit.expand,
@@ -865,13 +826,35 @@ class _CameraScreenState extends State<CameraScreen> {
                       ],
                     ),
                   ),
-                  if (!_showSettings)
+                  if (_showFilters && !_showSettings)
                     Positioned(
-                      left: 8,
-                      right: 8,
-                      bottom: 8,
+                      left: 10,
+                      right: 10,
+                      bottom: 10,
                       child: _presetTray(),
                     ),
+                  Positioned(
+                    left: 14,
+                    top: 54,
+                    child: Material(
+                      color: Colors.black.withValues(alpha: .68),
+                      borderRadius: BorderRadius.circular(22),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(22),
+                        onTap: () => setState(() => _showFilters = !_showFilters),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            const Icon(Icons.palette_outlined, size: 16, color: Color(0xFFB8F36B)),
+                            const SizedBox(width: 7),
+                            Text(_activePreset, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                            const SizedBox(width: 6),
+                            Icon(_showFilters ? Icons.keyboard_arrow_down_rounded : Icons.tune_rounded, size: 17),
+                          ]),
+                        ),
+                      ),
+                    ),
+                  ),
                   if (_showSettings)
                     Positioned(
                       left: 12,
@@ -1058,8 +1041,8 @@ class _CameraScreenState extends State<CameraScreen> {
               children: [
                 const Icon(Icons.auto_awesome_rounded, size: 15, color: Color(0xFFB8F36B)),
                 const SizedBox(width: 6),
-                const Text('QUICK LOOKS',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+                const Text('CHOOSE A LOOK',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.0)),
                 const Spacer(),
                 TextButton(
                   onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
