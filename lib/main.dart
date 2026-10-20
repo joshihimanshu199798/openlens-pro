@@ -147,6 +147,17 @@ class _CameraScreenState extends State<CameraScreen> {
   _SignaturePreset('90s Disposable', 'Vintage & Retro look', Icons.history_rounded, 0.06, 1.0, FlashMode.off, category: 'Vintage & Retro', brightness: 0.03, contrast: 1.10, saturation: 1.08, warmth: 0.14, tint: 0.02),
   _SignaturePreset('Matte Memories', 'Vintage & Retro look', Icons.history_rounded, 0.16, 1.0, FlashMode.off, category: 'Vintage & Retro', brightness: 0.08, contrast: 0.82, saturation: 0.82, warmth: 0.10, tint: 0.04),
   _SignaturePreset('Retro Teal', 'Vintage & Retro look', Icons.history_rounded, 0.04, 1.0, FlashMode.off, category: 'Vintage & Retro', brightness: 0.02, contrast: 1.06, saturation: 0.88, warmth: 0.04, tint: -0.04),
+  // Analog-video emulations. Color grades are applied during export; texture filters are baked into the saved video.
+  _SignaturePreset('VHS Tape', '1980s home camcorder', Icons.videocam_rounded, 0.02, 1.0, FlashMode.off, category: 'Old Camera', brightness: 0.02, contrast: 1.12, saturation: 0.92, warmth: 0.08, tint: -0.02),
+  _SignaturePreset('Hi8 Camcorder', 'Late 90s handycam', Icons.videocam_rounded, 0.04, 1.0, FlashMode.off, category: 'Old Camera', brightness: 0.02, contrast: 1.10, saturation: 1.02, warmth: 0.06, tint: -0.02),
+  _SignaturePreset('MiniDV 2001', 'Early digital camcorder', Icons.video_camera_back_rounded, 0.00, 1.0, FlashMode.off, category: 'Old Camera', brightness: 0.00, contrast: 1.18, saturation: 0.96, warmth: 0.02, tint: -0.01),
+  _SignaturePreset('Super 8 Home Movie', 'Warm family-film look', Icons.movie_creation_rounded, 0.10, 1.0, FlashMode.off, category: 'Old Camera', brightness: 0.05, contrast: 0.92, saturation: 0.88, warmth: 0.24, tint: 0.02),
+  _SignaturePreset('16mm Archive', 'Grainy documentary film', Icons.local_movies_rounded, -0.02, 1.0, FlashMode.off, category: 'Old Camera', brightness: 0.00, contrast: 1.18, saturation: 0.78, warmth: 0.08, tint: 0.01),
+  _SignaturePreset('Disposable 1998', 'Direct-flash snapshot', Icons.flash_on_rounded, 0.12, 1.0, FlashMode.off, category: 'Old Camera', brightness: 0.06, contrast: 1.12, saturation: 1.06, warmth: 0.18, tint: 0.02),
+  _SignaturePreset('Polaroid Video', 'Soft instant-film colors', Icons.photo_camera_back_rounded, 0.16, 1.0, FlashMode.off, category: 'Old Camera', brightness: 0.08, contrast: 0.86, saturation: 0.80, warmth: 0.14, tint: 0.03),
+  _SignaturePreset('CRT Memory', 'Soft analog playback', Icons.tv_rounded, -0.02, 1.0, FlashMode.off, category: 'Old Camera', brightness: -0.01, contrast: 1.08, saturation: 0.88, warmth: -0.02, tint: -0.02),
+  _SignaturePreset('2000s Handycam', 'Bright home-video look', Icons.video_camera_front_rounded, 0.06, 1.0, FlashMode.off, category: 'Old Camera', brightness: 0.03, contrast: 1.10, saturation: 1.08, warmth: 0.08, tint: 0.00),
+  _SignaturePreset('Night Flash 1999', 'Nostalgic night snapshots', Icons.nightlight_round, -0.02, 1.0, FlashMode.off, category: 'Old Camera', brightness: -0.01, contrast: 1.24, saturation: 0.92, warmth: 0.12, tint: 0.02),
   _SignaturePreset('Silver Gelatin', 'Black & White look', Icons.tonality_rounded, 0.00, 1.0, FlashMode.off, category: 'Black & White', brightness: 0.00, contrast: 1.28, saturation: 0.00, warmth: 0.00, tint: 0.00),
   _SignaturePreset('Classic Mono', 'Black & White look', Icons.tonality_rounded, 0.04, 1.0, FlashMode.off, category: 'Black & White', brightness: 0.02, contrast: 1.12, saturation: 0.00, warmth: 0.00, tint: 0.00),
   _SignaturePreset('Noir Contrast', 'Black & White look', Icons.tonality_rounded, -0.16, 1.0, FlashMode.off, category: 'Black & White', brightness: -0.08, contrast: 1.48, saturation: 0.00, warmth: 0.00, tint: 0.00),
@@ -448,7 +459,20 @@ class _CameraScreenState extends State<CameraScreen> {
           final red = (_gradeWarmth * 0.12 + _gradeTint * 0.025).clamp(-0.2, 0.2).toStringAsFixed(3);
           final blue = (-_gradeWarmth * 0.12 + _gradeTint * 0.025).clamp(-0.2, 0.2).toStringAsFixed(3);
           final green = (-_gradeTint * 0.05).clamp(-0.1, 0.1).toStringAsFixed(3);
-          final filter = 'eq=brightness=$brightness:contrast=$contrast:saturation=$saturation,colorbalance=rs=$red:gs=$green:bs=$blue';
+          final analogTexture = switch (_activePreset) {
+            'VHS Tape' => ',noise=alls=18:allf=t+u,drawgrid=width=iw:height=4:thickness=1:color=black@0.16',
+            'Hi8 Camcorder' => ',noise=alls=10:allf=t+u,drawgrid=width=iw:height=5:thickness=1:color=black@0.10',
+            'MiniDV 2001' => ',unsharp=5:5:0.35:5:5:0.0',
+            'Super 8 Home Movie' => ',noise=alls=12:allf=t+u,vignette=PI/5',
+            '16mm Archive' => ',noise=alls=22:allf=t+u,vignette=PI/4',
+            'Disposable 1998' => ',noise=alls=8:allf=t+u,vignette=PI/6',
+            'Polaroid Video' => ',vignette=PI/7',
+            'CRT Memory' => ',drawgrid=width=iw:height=4:thickness=1:color=black@0.14',
+            '2000s Handycam' => ',noise=alls=5:allf=t+u',
+            'Night Flash 1999' => ',noise=alls=14:allf=t+u,vignette=PI/6',
+            _ => '',
+          };
+          final filter = 'eq=brightness=$brightness:contrast=$contrast:saturation=$saturation,colorbalance=rs=$red:gs=$green:bs=$blue$analogTexture';
           try {
             final session = await FFmpegKit.execute('-y -i $input -vf "$filter" -c:v mpeg4 -q:v 3 -c:a copy -movflags +faststart $output');
             final code = await session.getReturnCode();
