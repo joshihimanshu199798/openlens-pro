@@ -1361,7 +1361,8 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
     final filtered = widget.presets.where((p) =>
       (_category == 'All' || p.category == _category) &&
       ('${p.name} ${p.hint} ${p.category}'.toLowerCase().contains(query))).toList();
-    final active = widget.presets.where((p) => p.name == widget.activePreset).firstOrNull;
+    final activePresets = widget.presets.where((p) => p.name == widget.activePreset).toList();
+    final _SignaturePreset? active = activePresets.isEmpty ? null : activePresets.first;
 
     return Scaffold(
       appBar: AppBar(
