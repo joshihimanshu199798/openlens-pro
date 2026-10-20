@@ -32,7 +32,7 @@ class OpenLensApp extends StatelessWidget {
           seedColor: const Color(0xFFB8F36B),
           brightness: Brightness.dark,
         ),
-        scaffoldBackgroundColor: const Color(0xFF080A0C),
+        scaffoldBackgroundColor: const Color(0xFF0A0D0E),
         useMaterial3: true,
       ),
       home: const CameraScreen(),
@@ -56,6 +56,7 @@ class _CameraScreenState extends State<CameraScreen> {
   bool _grid = true;
   String _compositionGuide = 'Thirds';
   bool _showSettings = false;
+  bool _showFilters = false;
   bool _focusLocked = false;
   bool _exposureLocked = false;
   bool _showHistogram = false;
@@ -567,40 +568,39 @@ class _CameraScreenState extends State<CameraScreen> {
   Future<void> _applyPreset(_SignaturePreset preset) async {
     final camera = _controller;
     if (camera == null || !camera.value.isInitialized) {
-      _showMessage('Start the camera before applying a preset.');
+      _showMessage('Camera is not ready. Please wait and try again.');
       return;
     }
     if (_recording) {
       _showMessage('Stop recording before changing presets.');
       return;
     }
+    // Digital grading must not depend on optional camera controls succeeding.
     final targetExposure = preset.exposure.clamp(_minExposure, _maxExposure).toDouble();
     final targetZoom = (_minZoom * preset.zoomFactor).clamp(_minZoom, _maxZoom).toDouble();
-    try {
-      await camera.setExposureOffset(targetExposure);
-      await camera.setZoomLevel(targetZoom);
-      try {
-        await camera.setFlashMode(preset.flash);
-        _flash = preset.flash;
-      } catch (_) {
-        // Flash is optional; keep the rest of the preset when unavailable.
-      }
-      if (!mounted) return;
-      setState(() {
-        _activePreset = preset.name;
-        _exposure = targetExposure;
-        _zoom = targetZoom;
-        _gradeBrightness = preset.brightness;
-        _gradeContrast = preset.contrast;
-        _gradeSaturation = preset.saturation;
-        _gradeWarmth = preset.warmth;
-        _gradeTint = preset.tint;
-        _showSettings = false;
-      });
-      _showMessage('${preset.name} preset applied.');
-    } catch (_) {
-      _showMessage('This preset could not be fully applied on this camera.');
-    }
+    var exposureApplied = false;
+    var zoomApplied = false;
+    var flashApplied = false;
+    try { await camera.setExposureOffset(targetExposure); exposureApplied = true; } catch (_) {}
+    try { await camera.setZoomLevel(targetZoom); zoomApplied = true; } catch (_) {}
+    try { await camera.setFlashMode(preset.flash); _flash = preset.flash; flashApplied = true; } catch (_) {}
+    if (!mounted) return;
+    setState(() {
+      _activePreset = preset.name;
+      _exposure = exposureApplied ? targetExposure : _exposure;
+      _zoom = zoomApplied ? targetZoom : _zoom;
+      _gradeBrightness = preset.brightness;
+      _gradeContrast = preset.contrast;
+      _gradeSaturation = preset.saturation;
+      _gradeWarmth = preset.warmth;
+      _gradeTint = preset.tint;
+      _showSettings = false;
+      _showFilters = false;
+    });
+    final note = exposureApplied && zoomApplied && flashApplied
+        ? ''
+        : ' Camera controls may be limited, but the color look is applied.';
+    _showMessage('${preset.name} applied.$note');
   }
 
   Future<void> _setExposure(double value) async {
@@ -776,47 +776,6 @@ class _CameraScreenState extends State<CameraScreen> {
         child: Column(
           children: [
             _topBar(),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-              child: Material(
-                color: const Color(0xFF171D19),
-                borderRadius: BorderRadius.circular(16),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                    builder: (_) => _PresetLibraryPage(
-                      presets: [..._presets, ..._libraryPresets, ..._customPresets],
-                      activePreset: _activePreset,
-                      onApply: (preset) { Navigator.of(context).pop(); _applyPreset(preset); },
-                    ),
-                  )),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFF35432C)),
-                    ),
-                    child: Row(children: [
-                      Container(
-                        width: 40, height: 40,
-                        decoration: BoxDecoration(color: const Color(0xFFB8F36B), borderRadius: BorderRadius.circular(12)),
-                        child: const Icon(Icons.palette_rounded, color: Colors.black, size: 22),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                        const Text('CURRENT LOOK', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.white60, letterSpacing: 1.1)),
-                        const SizedBox(height: 2),
-                        Text(_activePreset, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-                        Text('Tap to browse and apply a look', style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: .68))),
-                      ])),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.tune_rounded, color: Color(0xFFB8F36B), size: 22),
-                    ]),
-                  ),
-                ),
-              ),
-            ),
             Expanded(
               child: Stack(
                 fit: StackFit.expand,
@@ -865,13 +824,35 @@ class _CameraScreenState extends State<CameraScreen> {
                       ],
                     ),
                   ),
-                  if (!_showSettings)
+                  if (_showFilters && !_showSettings)
                     Positioned(
-                      left: 8,
-                      right: 8,
-                      bottom: 8,
+                      left: 10,
+                      right: 10,
+                      bottom: 10,
                       child: _presetTray(),
                     ),
+                  Positioned(
+                    left: 14,
+                    top: 54,
+                    child: Material(
+                      color: Colors.black.withValues(alpha: .68),
+                      borderRadius: BorderRadius.circular(22),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(22),
+                        onTap: () => setState(() => _showFilters = !_showFilters),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            const Icon(Icons.palette_outlined, size: 16, color: Color(0xFFB8F36B)),
+                            const SizedBox(width: 7),
+                            Text(_activePreset, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                            const SizedBox(width: 6),
+                            Icon(_showFilters ? Icons.keyboard_arrow_down_rounded : Icons.tune_rounded, size: 17),
+                          ]),
+                        ),
+                      ),
+                    ),
+                  ),
                   if (_showSettings)
                     Positioned(
                       left: 12,
@@ -890,51 +871,72 @@ class _CameraScreenState extends State<CameraScreen> {
   }
 
   Widget _topBar() => Padding(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+        padding: const EdgeInsets.fromLTRB(18, 8, 14, 10),
         child: Row(
           children: [
             Container(
-              width: 38,
-              height: 38,
+              width: 42, height: 42,
               decoration: BoxDecoration(
-                color: const Color(0xFFB8F36B),
-                borderRadius: BorderRadius.circular(12),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFD7FF91), Color(0xFF9DDF4F)],
+                  begin: Alignment.topLeft, end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(15),
               ),
-              child: const Icon(Icons.camera_alt_rounded, color: Colors.black),
+              child: const Icon(Icons.camera_alt_rounded, color: Color(0xFF11150C), size: 23),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 11),
             const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('OPENLENS', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2)),
-                  Text('PRO CAMERA', style: TextStyle(fontSize: 10, color: Colors.white54, letterSpacing: 2)),
+                  Text('OPENLENS', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.7)),
+                  SizedBox(height: 2),
+                  Text('PRO CAMERA', style: TextStyle(fontSize: 9, color: Colors.white54, letterSpacing: 1.5, fontWeight: FontWeight.w700)),
                 ],
               ),
             ),
-            IconButton(
-              tooltip: 'Toggle composition guide',
-              onPressed: () => setState(() => _grid = !_grid),
-              icon: Icon(_grid ? Icons.grid_on_rounded : Icons.grid_off_rounded),
+            _topIconButton(
+              icon: _grid ? Icons.grid_4x4_rounded : Icons.grid_off_rounded,
+              tooltip: 'Composition grid',
+              onTap: () => setState(() => _grid = !_grid),
             ),
+            const SizedBox(width: 5),
             PopupMenuButton<String>(
-              tooltip: 'Choose composition guide',
+              tooltip: 'Composition guide',
               initialValue: _compositionGuide,
               onSelected: (value) => setState(() { _compositionGuide = value; _grid = true; }),
+              color: const Color(0xFF202629),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               itemBuilder: (context) => const [
                 PopupMenuItem(value: 'Thirds', child: Text('Rule of thirds')),
                 PopupMenuItem(value: 'Center', child: Text('Center crosshair')),
                 PopupMenuItem(value: 'Portrait', child: Text('Portrait frame')),
                 PopupMenuItem(value: 'Golden', child: Text('Golden ratio')),
               ],
-              icon: const Icon(Icons.crop_free_rounded),
+              icon: const Icon(Icons.crop_free_rounded, color: Colors.white70),
             ),
-            IconButton(
-              tooltip: 'Camera settings',
-              onPressed: () => setState(() => _showSettings = !_showSettings),
-              icon: Icon(_showSettings ? Icons.tune_rounded : Icons.settings_rounded),
+            const SizedBox(width: 2),
+            _topIconButton(
+              icon: _showSettings ? Icons.close_rounded : Icons.tune_rounded,
+              tooltip: 'Camera controls',
+              onTap: () => setState(() { _showSettings = !_showSettings; if (_showSettings) _showFilters = false; }),
             ),
           ],
+        ),
+      );
+
+  Widget _topIconButton({required IconData icon, required String tooltip, required VoidCallback onTap}) =>
+      Tooltip(
+        message: tooltip,
+        child: Material(
+          color: const Color(0xFF171C1F),
+          borderRadius: BorderRadius.circular(13),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(13),
+            onTap: onTap,
+            child: SizedBox(width: 40, height: 40, child: Icon(icon, size: 20, color: Colors.white70)),
+          ),
         ),
       );
 
@@ -955,7 +957,7 @@ class _CameraScreenState extends State<CameraScreen> {
       );
 
   Widget _bottomControls() => Container(
-        padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
         decoration: const BoxDecoration(
           color: Color(0xFF0D1012),
           border: Border(top: BorderSide(color: Color(0xFF24282B))),
@@ -1058,8 +1060,8 @@ class _CameraScreenState extends State<CameraScreen> {
               children: [
                 const Icon(Icons.auto_awesome_rounded, size: 15, color: Color(0xFFB8F36B)),
                 const SizedBox(width: 6),
-                const Text('QUICK LOOKS',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+                const Text('CHOOSE A LOOK',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.0)),
                 const Spacer(),
                 TextButton(
                   onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
@@ -1546,8 +1548,8 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
         children: [
           if (active != null)
             Container(
-              margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               decoration: BoxDecoration(
                 color: const Color(0xFF1B2417),
                 borderRadius: BorderRadius.circular(16),
@@ -1568,7 +1570,7 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
               ]),
             ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: TextField(
               onChanged: (value) => setState(() => _query = value),
               textInputAction: TextInputAction.search,
@@ -1590,7 +1592,7 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: Row(children: [
               const Icon(Icons.filter_list_rounded, color: Color(0xFFB8F36B), size: 20),
               const SizedBox(width: 8),
@@ -1623,7 +1625,7 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
             ]),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
             child: Wrap(
               spacing: 8,
               children: ['All', 'Favorites', 'Recent'].map((view) => ChoiceChip(
@@ -1640,7 +1642,7 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 2, 18, 8),
+            padding: const EdgeInsets.fromLTRB(18, 2, 18, 6),
             child: Row(children: [
               Text('${filtered.length} looks', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
               const Spacer(),
@@ -1664,9 +1666,9 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
                   ),
                 )
               : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 24),
+                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 18),
                   itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  separatorBuilder: (_, __) => const SizedBox(height: 5),
                   itemBuilder: (context, index) {
                     final preset = filtered[index];
                     final selected = preset.name == widget.activePreset;
@@ -1680,14 +1682,14 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
                           if (context.mounted) widget.onApply(preset);
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(color: selected ? const Color(0xFFB8F36B) : const Color(0xFF2B3338)),
                           ),
                           child: Row(children: [
                             Container(
-                              width: 44, height: 44,
+                              width: 38, height: 38,
                               decoration: BoxDecoration(
                                 color: selected ? const Color(0xFFB8F36B) : const Color(0xFF252D31),
                                 borderRadius: BorderRadius.circular(13),
@@ -1697,7 +1699,7 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
                             const SizedBox(width: 12),
                             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                               Text(preset.name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
                               const SizedBox(height: 3),
                               Text(preset.category == 'Signature' ? preset.hint : preset.category,
                                 maxLines: 1, overflow: TextOverflow.ellipsis,
