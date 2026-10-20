@@ -549,22 +549,13 @@ class _CameraScreenState extends State<CameraScreen> {
       _showMessage('Stop recording before changing presets.');
       return;
     }
-    final targetExposure = preset.exposure.clamp(_minExposure, _maxExposure).toDouble();
-    final targetZoom = (_minZoom * preset.zoomFactor).clamp(_minZoom, _maxZoom).toDouble();
-    try {
-      await camera.setExposureOffset(targetExposure);
-      await camera.setZoomLevel(targetZoom);
-      try {
-        await camera.setFlashMode(preset.flash);
-        _flash = preset.flash;
-      } catch (_) {
-        // Flash is optional; keep the rest of the preset when unavailable.
-      }
-      if (!mounted) return;
+
+    // Apply the software grade first. Hardware exposure, zoom and flash controls
+    // are optional: a device-specific camera-control error must never cancel the
+    // actual color filter or leave the selected preset looking inactive.
+    if (mounted) {
       setState(() {
         _activePreset = preset.name;
-        _exposure = targetExposure;
-        _zoom = targetZoom;
         _gradeBrightness = preset.brightness;
         _gradeContrast = preset.contrast;
         _gradeSaturation = preset.saturation;
@@ -572,10 +563,35 @@ class _CameraScreenState extends State<CameraScreen> {
         _gradeTint = preset.tint;
         _showSettings = false;
       });
-      _showMessage('${preset.name} preset applied.');
-    } catch (_) {
-      _showMessage('This preset could not be fully applied on this camera.');
     }
+
+    final targetExposure = preset.exposure.clamp(_minExposure, _maxExposure).toDouble();
+    final targetZoom = (_minZoom * preset.zoomFactor).clamp(_minZoom, _maxZoom).toDouble();
+    var hardwareWarning = false;
+
+    try {
+      await camera.setExposureOffset(targetExposure);
+      if (mounted) setState(() => _exposure = targetExposure);
+    } catch (_) {
+      hardwareWarning = true;
+    }
+    try {
+      await camera.setZoomLevel(targetZoom);
+      if (mounted) setState(() => _zoom = targetZoom);
+    } catch (_) {
+      hardwareWarning = true;
+    }
+    try {
+      await camera.setFlashMode(preset.flash);
+      if (mounted) setState(() => _flash = preset.flash);
+    } catch (_) {
+      // Flash is optional; preserve the software filter if unavailable.
+      hardwareWarning = true;
+    }
+
+    _showMessage(hardwareWarning
+        ? '${preset.name} filter applied. Some camera controls are unsupported.'
+        : '${preset.name} filter applied.');
   }
 
   Future<void> _setExposure(double value) async {
