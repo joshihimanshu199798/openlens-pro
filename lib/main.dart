@@ -55,6 +55,11 @@ class _CameraScreenState extends State<CameraScreen> {
   bool _showSettings = false;
   bool _focusLocked = false;
   bool _exposureLocked = false;
+  bool _showHistogram = false;
+  bool _histogramStreamRunning = false;
+  List<double> _histogram = List<double>.filled(32, 0);
+  double _highlightPercent = 0;
+  DateTime _lastHistogramUpdate = DateTime.fromMillisecondsSinceEpoch(0);
   String _status = 'Starting camera…';
   String _mode = 'PHOTO';
   double _zoom = 1;
@@ -239,6 +244,7 @@ class _CameraScreenState extends State<CameraScreen> {
           _controller = next;
           _status = 'Ready · ${_cameras[index].lensDirection.name} camera';
         });
+        if (_showHistogram) await _startHistogramStream(next);
       } else {
         await next.dispose();
       }
@@ -488,6 +494,81 @@ class _CameraScreenState extends State<CameraScreen> {
     }
   }
 
+  Future<void> _toggleHistogram() async {
+    final enable = !_showHistogram;
+    setState(() => _showHistogram = enable);
+    final camera = _controller;
+    if (camera == null || !camera.value.isInitialized) {
+      if (enable) _showMessage('Start the camera before enabling the histogram.');
+      return;
+    }
+    if (enable) {
+      await _startHistogramStream(camera);
+    } else {
+      await _stopHistogramStream(camera);
+    }
+  }
+
+  Future<void> _startHistogramStream(CameraController camera) async {
+    if (_histogramStreamRunning || camera.value.isStreamingImages) return;
+    try {
+      await camera.startImageStream(_onCameraImage);
+      _histogramStreamRunning = true;
+      if (mounted) setState(() {});
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _showHistogram = false;
+          _histogramStreamRunning = false;
+        });
+        _showMessage('Live histogram is not supported while this camera mode is active.');
+      }
+    }
+  }
+
+  Future<void> _stopHistogramStream(CameraController camera) async {
+    if (!_histogramStreamRunning && !camera.value.isStreamingImages) return;
+    try {
+      if (camera.value.isStreamingImages) await camera.stopImageStream();
+    } catch (_) {
+      // The camera may already have stopped its image stream during a mode change.
+    } finally {
+      _histogramStreamRunning = false;
+    }
+  }
+
+  void _onCameraImage(CameraImage image) {
+    if (!_showHistogram || image.planes.isEmpty) return;
+    final now = DateTime.now();
+    if (now.difference(_lastHistogramUpdate).inMilliseconds < 180) return;
+    _lastHistogramUpdate = now;
+    final plane = image.planes.first;
+    final bytes = plane.bytes;
+    final rowStride = plane.bytesPerRow;
+    final pixelStride = plane.bytesPerPixel ?? 1;
+    final bins = List<int>.filled(32, 0);
+    var samples = 0;
+    var highlights = 0;
+    for (var y = 0; y < image.height; y += 8) {
+      final row = y * rowStride;
+      for (var x = 0; x < image.width; x += 8) {
+        final index = row + x * pixelStride;
+        if (index < 0 || index >= bytes.length) continue;
+        final luminance = bytes[index];
+        bins[luminance ~/ 8]++;
+        samples++;
+        if (luminance >= 235) highlights++;
+      }
+    }
+    if (samples == 0 || !mounted) return;
+    final peak = bins.reduce((a, b) => a > b ? a : b);
+    final normalized = bins.map((value) => peak == 0 ? 0.0 : value / peak).toList();
+    setState(() {
+      _histogram = normalized;
+      _highlightPercent = highlights * 100 / samples;
+    });
+  }
+
   Future<void> _toggleFocusLock() async {
     final camera = _controller;
     if (camera == null || !camera.value.isInitialized) return;
@@ -558,7 +639,11 @@ class _CameraScreenState extends State<CameraScreen> {
 
   @override
   void dispose() {
-    _controller?.dispose();
+    final camera = _controller;
+    if (camera != null && camera.value.isStreamingImages) {
+      camera.stopImageStream().catchError((_) {});
+    }
+    camera?.dispose();
     super.dispose();
   }
 
@@ -617,6 +702,12 @@ class _CameraScreenState extends State<CameraScreen> {
                   else
                     _cameraPlaceholder(),
                   if (_grid) const IgnorePointer(child: _CompositionGrid()),
+                  if (_showHistogram)
+                    Positioned(
+                      top: 58,
+                      right: 12,
+                      child: _LiveHistogram(values: _histogram, highlightPercent: _highlightPercent),
+                    ),
                   Positioned(
                     left: 16,
                     right: 16,
@@ -910,6 +1001,13 @@ class _CameraScreenState extends State<CameraScreen> {
             ),
             Row(children: [
               Expanded(child: OutlinedButton.icon(
+                onPressed: _toggleHistogram,
+                icon: Icon(_showHistogram ? Icons.show_chart_rounded : Icons.monitor_heart_outlined, size: 16),
+                label: Text(_showHistogram ? 'Hide histogram' : 'Live histogram'),
+                style: OutlinedButton.styleFrom(foregroundColor: _showHistogram ? const Color(0xFFB8F36B) : Colors.white),
+              )),
+              const SizedBox(width: 8),
+              Expanded(child: OutlinedButton.icon(
                 onPressed: _toggleFocusLock,
                 icon: Icon(_focusLocked ? Icons.lock_rounded : Icons.center_focus_strong_rounded, size: 16),
                 label: Text(_focusLocked ? 'Focus locked' : 'Lock focus'),
@@ -990,6 +1088,92 @@ class _CameraScreenState extends State<CameraScreen> {
         decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(20)),
         child: Text(text, style: TextStyle(color: foreground, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
       );
+}
+
+class _LiveHistogram extends StatelessWidget {
+  const _LiveHistogram({required this.values, required this.highlightPercent});
+  final List<double> values;
+  final double highlightPercent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 144,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: const Color(0xD9080A0C),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0x667E8A90)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text('LIVE LUMA', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+          const SizedBox(height: 3),
+          SizedBox(
+            height: 42,
+            width: double.infinity,
+            child: CustomPaint(painter: _HistogramPainter(values)),
+          ),
+          Row(children: [
+            const Expanded(child: Text('HIGHLIGHTS', style: TextStyle(fontSize: 8, color: Colors.white60))),
+            Text('${highlightPercent.toStringAsFixed(1)}%', style: TextStyle(
+              fontSize: 9, fontWeight: FontWeight.w800,
+              color: highlightPercent >= 5 ? Colors.orangeAccent : const Color(0xFFB8F36B),
+            )),
+          ]),
+        ],
+      ),
+    );
+  }
+}
+
+class _HistogramPainter extends CustomPainter {
+  const _HistogramPainter(this.values);
+  final List<double> values;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final grid = Paint()
+      ..color = Colors.white.withValues(alpha: 0.13)
+      ..strokeWidth = 0.5;
+    for (var i = 1; i < 4; i++) {
+      final y = size.height * i / 4;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
+    }
+    canvas.drawLine(Offset(0, size.height - 0.5), Offset(size.width, size.height - 0.5), grid);
+    if (values.isEmpty) return;
+    final path = Path()..moveTo(0, size.height);
+    for (var i = 0; i < values.length; i++) {
+      final x = size.width * i / (values.length - 1);
+      final y = size.height * (1 - values[i].clamp(0.0, 1.0));
+      path.lineTo(x, y);
+    }
+    path.lineTo(size.width, size.height);
+    path.close();
+    final fill = Paint()
+      ..color = const Color(0xFFB8F36B).withValues(alpha: 0.28)
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(path, fill);
+    final stroke = Paint()
+      ..color = const Color(0xFFB8F36B)
+      ..strokeWidth = 1.5
+      ..style = PaintingStyle.stroke;
+    final line = Path();
+    for (var i = 0; i < values.length; i++) {
+      final point = Offset(size.width * i / (values.length - 1), size.height * (1 - values[i].clamp(0.0, 1.0)));
+      if (i == 0) {
+        line.moveTo(point.dx, point.dy);
+      } else {
+        line.lineTo(point.dx, point.dy);
+      }
+    }
+    canvas.drawPath(line, stroke);
+  }
+
+  @override
+  bool shouldRepaint(covariant _HistogramPainter oldDelegate) => oldDelegate.values != values;
 }
 
 class _CompositionGrid extends StatelessWidget {
