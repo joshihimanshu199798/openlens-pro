@@ -440,8 +440,6 @@ class _CameraScreenState extends State<CameraScreen> {
         final hasGrade = _activePreset != 'Auto' || _gradeBrightness != 0 || _gradeContrast != 1 || _gradeSaturation != 1 || _gradeWarmth != 0 || _gradeTint != 0;
         if (hasGrade) {
           final gradedPath = '${video.path}.openlens-graded.mp4';
-          final input = _ffmpegQuote(video.path);
-          final output = _ffmpegQuote(gradedPath);
           final brightness = (_gradeBrightness + _gradeWarmth * 0.025).clamp(-0.5, 0.5).toStringAsFixed(3);
           final contrast = _gradeContrast.clamp(0.5, 2.0).toStringAsFixed(3);
           final saturation = _gradeSaturation.clamp(0.0, 2.0).toStringAsFixed(3);
@@ -450,7 +448,10 @@ class _CameraScreenState extends State<CameraScreen> {
           final green = (-_gradeTint * 0.05).clamp(-0.1, 0.1).toStringAsFixed(3);
           final filter = 'eq=brightness=$brightness:contrast=$contrast:saturation=$saturation,colorbalance=rs=$red:gs=$green:bs=$blue';
           try {
-            final session = await FFmpegKit.execute('-y -i $input -vf "$filter" -c:v mpeg4 -q:v 3 -c:a copy -movflags +faststart $output');
+            final session = await FFmpegKit.executeWithArguments([
+              '-y', '-i', video.path, '-vf', filter, '-c:v', 'mpeg4',
+              '-q:v', '3', '-c:a', 'copy', '-movflags', '+faststart', gradedPath,
+            ]);
             final code = await session.getReturnCode();
             if (ReturnCode.isSuccess(code) && await File(gradedPath).exists() && await File(gradedPath).length() > 0) {
               savedVideoPath = gradedPath;
@@ -498,8 +499,6 @@ class _CameraScreenState extends State<CameraScreen> {
       }
     }
   }
-
-  String _ffmpegQuote(String path) => "'${path.replaceAll("'", "'\\\\''")}'";
 
   Future<void> _captureAction() async {
     if (_mode == 'VIDEO') {
