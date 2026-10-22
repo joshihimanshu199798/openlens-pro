@@ -59,6 +59,12 @@ class __CameraScreenState extends State<_CameraScreen> {
   bool _busy = false;
   bool _recording = false;
   bool _grid = true;
+  bool _wideAspect = false;
+  bool _showRetroTuning = false;
+  bool _timestampOverlay = false;
+  double _grainIntensity = 0.22;
+  double _colorBleed = 0.18;
+  double _trackingDistortion = 0.12;
   final String _compositionGuide = 'Thirds';
   bool _showSettings = false;
   bool _focusLocked = false;
@@ -865,8 +871,31 @@ class __CameraScreenState extends State<_CameraScreen> {
                   )
                 else
                   Positioned.fill(child: _cameraPlaceholder()),
+                if (_mode == 'VIDEO') ...[
+                  Positioned.fill(child: IgnorePointer(child: CustomPaint(
+                    painter: _RetroTexturePainter(grain: _grainIntensity, bleed: _colorBleed, tracking: _trackingDistortion),
+                  ))),
+                  if (_timestampOverlay)
+                    Positioned(left: 20, bottom: 270, child: IgnorePointer(child: Text(
+                      'OCT 23 1998',
+                      style: TextStyle(color: const Color(0xFFFF9B45), fontFamily: 'monospace',
+                        fontSize: 14, letterSpacing: 2, fontWeight: FontWeight.w800,
+                        shadows: [Shadow(color: const Color(0xFFFF6B1A).withValues(alpha: .85), blurRadius: 12)],
+                      ),
+                    ))),
+                  Positioned(top: 48, left: 16, right: 16, child: SafeArea(bottom: false, child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _retroTopButton(_flash == FlashMode.off ? Icons.flash_off_rounded : Icons.flash_on_rounded, _toggleFlash),
+                      _retroTopButton(_wideAspect ? Icons.crop_16_9_rounded : Icons.crop_3_2_rounded, () => setState(() => _wideAspect = !_wideAspect)),
+                      _retroTopButton(Icons.cameraswitch_rounded, _switchCamera),
+                    ],
+                  ))),
+                  if (_showRetroTuning)
+                    Positioned(left: 0, right: 0, bottom: 0, child: SafeArea(top: false, child: _retroTuningSheet())),
+                ],
                 // Overlays are deliberately light and never consume preview space.
-                if (_grid) Positioned.fill(child: IgnorePointer(child: _CompositionGrid(mode: _compositionGuide))),
+                if (_grid && _mode != 'VIDEO') Positioned.fill(child: IgnorePointer(child: _CompositionGrid(mode: _compositionGuide))),
                 if (_countdownRemaining != null)
                   Center(
                     child: Container(
@@ -1005,7 +1034,57 @@ class __CameraScreenState extends State<_CameraScreen> {
     ),
   );
 
-  Widget _bottomControls({required bool compact}) => Padding(
+  Widget _bottomControls({required bool compact}) {
+    if (_mode == 'VIDEO') {
+      return Padding(
+        padding: EdgeInsets.fromLTRB(14, 0, 14, compact ? 6 : 12),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            height: 66, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(color: const Color(0xB8121216), borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withValues(alpha: .14))),
+            child: ListView(scrollDirection: Axis.horizontal, children: [
+              for (final name in ['Standard', 'VHS', '8mm', 'Camcorder', ..._quickLookNames])
+                Builder(builder: (context) {
+                  final candidates = _allPresets.where((p) => p.name == name);
+                  final preset = candidates.isNotEmpty ? candidates.first : (name == 'VHS' ? _allPresets.firstWhere((p) => p.name == 'Faded Film', orElse: () => _allPresets.first) : _allPresets.first);
+                  final selected = name == 'Standard' ? _activePreset == 'Auto' : _activePreset == preset.name || _activePreset == name;
+                  return GestureDetector(
+                    onTap: () => name == 'Standard' ? _applyPreset(_allPresets.firstWhere((p) => p.name == 'Auto', orElse: () => _allPresets.first)) : _applyPreset(preset),
+                    onDoubleTap: () => setState(() => _showRetroTuning = true),
+                    child: Container(width: 64, margin: const EdgeInsets.only(right: 7),
+                      decoration: BoxDecoration(color: selected ? Colors.white.withValues(alpha: .14) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(17), border: Border.all(color: selected ? Colors.white : Colors.white24, width: selected ? 2 : 1)),
+                      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Icon(name == 'VHS' ? Icons.videocam_rounded : name == '8mm' ? Icons.movie_filter_rounded : name == 'Camcorder' ? Icons.video_camera_back_rounded : Icons.circle_outlined,
+                          color: Colors.white, size: 20),
+                        const SizedBox(height: 3),
+                        Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w700)),
+                      ]),
+                    ),
+                  );
+                }),
+              IconButton(onPressed: _openLooks, icon: const Icon(Icons.tune_rounded, color: Colors.white), tooltip: 'All filters'),
+            ]),
+          ),
+          const SizedBox(height: 16),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
+            _roundAction(tooltip: 'Open gallery', icon: Icons.photo_outlined, onTap: _openGalleryPreview),
+            GestureDetector(onTap: _busy ? null : _captureAction, child: Container(
+              width: 74, height: 74, padding: const EdgeInsets.all(5),
+              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2)),
+              child: DecoratedBox(decoration: BoxDecoration(shape: BoxShape.circle, color: _recording ? const Color(0xFFE53935) : const Color(0xFFFF3030)),
+                child: Center(child: Icon(_recording ? Icons.stop_rounded : Icons.circle, color: Colors.white, size: _recording ? 28 : 40))),
+            )),
+            _roundAction(tooltip: 'Retro effect tuning', icon: Icons.settings_outlined, onTap: () => setState(() => _showRetroTuning = true)),
+          ]),
+          const SizedBox(height: 12),
+          Text(_recording ? '● RECORDING' : 'VIDEO  ·  ${_activePreset == 'Auto' ? 'Standard' : _activePreset}',
+            style: TextStyle(fontSize: 10, letterSpacing: 1.2, fontWeight: FontWeight.w800, color: _recording ? const Color(0xFFFF4B4B) : Colors.white70)),
+        ]),
+      );
+    }
+    return Padding(
     padding: EdgeInsets.fromLTRB(18, 0, 18, compact ? 6 : 12),
     child: Column(
       mainAxisSize: MainAxisSize.min,
@@ -1072,6 +1151,9 @@ class __CameraScreenState extends State<_CameraScreen> {
                   final selected = _activePreset == look.name;
                   return GestureDetector(
                     onTap: () => _applyPreset(look),
+                    onDoubleTap: () {
+                      if (_mode == 'VIDEO') setState(() => _showRetroTuning = true);
+                    },
                     child: Container(
                       width: 76,
                       margin: const EdgeInsets.only(right: 9, bottom: 3),
@@ -1201,6 +1283,47 @@ class __CameraScreenState extends State<_CameraScreen> {
         ),
       ],
     ),
+  );
+
+  Widget _retroTopButton(IconData icon, VoidCallback onTap) => IconButton(
+    onPressed: onTap, icon: Icon(icon, color: Colors.white, size: 23),
+    style: IconButton.styleFrom(backgroundColor: const Color(0x66000000), shape: const CircleBorder(),
+      side: BorderSide(color: Colors.white.withValues(alpha: .16))),
+  );
+
+  Widget _retroTuningSheet() => Container(
+    padding: const EdgeInsets.fromLTRB(22, 10, 22, 22),
+    decoration: const BoxDecoration(color: Color(0xFF121212),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
+    child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Center(child: GestureDetector(onVerticalDragEnd: (_) => setState(() => _showRetroTuning = false),
+        child: Container(width: 42, height: 4, margin: const EdgeInsets.only(bottom: 18),
+          decoration: BoxDecoration(color: Colors.white38, borderRadius: BorderRadius.circular(8)))),
+      ),
+      Row(children: [
+        const Expanded(child: Text('Retro effect tuning', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800))),
+        IconButton(onPressed: () => setState(() => _showRetroTuning = false), icon: const Icon(Icons.close_rounded, color: Colors.white70)),
+      ]),
+      _retroSlider('Grain intensity', _grainIntensity, (v) => setState(() => _grainIntensity = v)),
+      _retroSlider('Color bleed · RGB shift', _colorBleed, (v) => setState(() => _colorBleed = v)),
+      _retroSlider('Tracking distortion', _trackingDistortion, (v) => setState(() => _trackingDistortion = v)),
+      const SizedBox(height: 6),
+      SwitchListTile(
+        contentPadding: EdgeInsets.zero, value: _timestampOverlay,
+        onChanged: (v) => setState(() => _timestampOverlay = v),
+        activeThumbColor: const Color(0xFFFF9B45),
+        title: const Text('Timestamp overlay', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+        subtitle: const Text('Retro orange date stamp', style: TextStyle(color: Colors.white54, fontSize: 12)),
+      ),
+    ]),
+  );
+
+  Widget _retroSlider(String label, double value, ValueChanged<double> onChanged) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [Expanded(child: Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13))), Text('${(value * 100).round()}%', style: const TextStyle(color: Colors.white54, fontSize: 11))]),
+      Slider(value: value, min: 0, max: 1, onChanged: onChanged,
+        activeColor: Colors.white, inactiveColor: Colors.white24, thumbColor: Colors.white),
+    ],
   );
 
   Widget _floatingControl({
@@ -1603,6 +1726,41 @@ List<Color> _previewColors(_SignaturePreset preset) {
   if (warmth > .2) return const [Color(0xFFFFC078), Color(0xFFCA7A45), Color(0xFF475B50)];
   if (warmth < -.15) return const [Color(0xFFB9E5F7), Color(0xFF548DAA), Color(0xFF303B6D)];
   return const [Color(0xFFFFB16B), Color(0xFF4FAF87), Color(0xFF477FE5)];
+}
+
+class _RetroTexturePainter extends CustomPainter {
+  _RetroTexturePainter({required this.grain, required this.bleed, required this.tracking});
+  final double grain;
+  final double bleed;
+  final double tracking;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final scan = Paint()..color = Colors.black.withValues(alpha: .10 + tracking * .12);
+    for (double y = 0; y < size.height; y += 4) {
+      canvas.drawRect(Rect.fromLTWH(0, y, size.width, 1), scan);
+    }
+    if (bleed > .01) {
+      final tint = Paint()..color = const Color(0xFFFF3030).withValues(alpha: bleed * .10);
+      canvas.drawRect(Rect.fromLTWH(size.width * .02, size.height * .42, size.width * .96, size.height * .018), tint);
+      final cyan = Paint()..color = const Color(0xFF00E5FF).withValues(alpha: bleed * .08);
+      canvas.drawRect(Rect.fromLTWH(0, size.height * .72, size.width, size.height * .012), cyan);
+    }
+    if (tracking > .02) {
+      final line = Paint()..color = Colors.white.withValues(alpha: tracking * .13);
+      canvas.drawRect(Rect.fromLTWH(0, size.height * (.28 + tracking * .2), size.width, 1.5 + tracking * 2), line);
+    }
+    if (grain > .01) {
+      final dot = Paint()..color = Colors.white.withValues(alpha: grain * .11);
+      // Deterministic fine grain texture; intentionally subtle over the live preview.
+      for (int i = 0; i < 360; i++) {
+        final x = (i * 73.17) % size.width;
+        final y = (i * 139.73) % size.height;
+        canvas.drawRect(Rect.fromLTWH(x, y, 1, 1), dot);
+      }
+    }
+  }
+  @override
+  bool shouldRepaint(covariant _RetroTexturePainter old) => old.grain != grain || old.bleed != bleed || old.tracking != tracking;
 }
 
 class _LookSamplePainter extends CustomPainter {
