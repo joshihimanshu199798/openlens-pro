@@ -1585,7 +1585,7 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
       final luma = 0.213 * r + 0.715 * g + 0.072 * b;
       double grade(double value, double warm, double tintShift) =>
           ((luma + (value - luma) * saturation - 0.5) * contrast + 0.5 +
-           preset.brightness * 0.65 + warm * warmth + tintShift * tint).clamp(0.0, 1.0);
+           preset.brightness * 0.65 + warm * warmth + tintShift * tint).clamp(0.0, 1.0).toDouble();
       int ch(double value) => (value * 255).round().clamp(0, 255).toInt();
       return Color.fromARGB(255, ch(grade(r, 1, 0)), ch(grade(g, 0, 1)), ch(grade(b, -1, -0.35)));
     }
@@ -2221,7 +2221,7 @@ class _PhotoEditorScreenState extends State<_PhotoEditorScreen> {
               style: const TextStyle(color: _workspaceMuted, fontWeight: FontWeight.w700, fontSize: 12)),
           ]),
           Slider(
-            value: _tool == 'Contrast' ? _contrast.clamp(.5, 1.8) : _adjustment.clamp(-.35, .35),
+            value: _tool == 'Contrast' ? _contrast.clamp(.5, 1.8).toDouble() : _adjustment.clamp(-.35, .35).toDouble(),
             min: _tool == 'Contrast' ? .5 : -.35,
             max: _tool == 'Contrast' ? 1.8 : .35,
             onChanged: (value) => setState(() {
