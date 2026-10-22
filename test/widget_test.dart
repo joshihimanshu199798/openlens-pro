@@ -5,7 +5,7 @@ void main() {
   testWidgets('OpenLens Pro launches', (WidgetTester tester) async {
     await tester.pumpWidget(const OpenLensApp());
     await tester.pump();
-    expect(find.text('OPENLENS'), findsOneWidget);
+    expect(find.text('Recent Editing'), findsOneWidget);
     expect(find.text('PRO CAMERA'), findsNothing);
     expect(find.byTooltip('Filters and looks'), findsOneWidget);
   });
