@@ -1995,7 +1995,7 @@ class _HomeDashboard extends StatelessWidget {
           SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.fromLTRB(22, 20, 22, 30), child: InkWell(
             onTap: onPick,
             borderRadius: BorderRadius.circular(24),
-            child: const Container(height: 185, decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.all(Radius.circular(24)), border: Border.fromBorderSide(BorderSide(color: Color(0xFFE4E4DF)))),
+            child: Container(height: 185, decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.all(Radius.circular(24)), border: Border.fromBorderSide(BorderSide(color: Color(0xFFE4E4DF)))),
               child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                 Icon(Icons.add_photo_alternate_outlined, size: 38, color: _workspaceMuted),
                 SizedBox(height: 10),
