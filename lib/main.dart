@@ -54,7 +54,7 @@ class _CameraScreenState extends State<CameraScreen> {
   bool _busy = false;
   bool _recording = false;
   bool _grid = true;
-  String _compositionGuide = 'Thirds';
+  final String _compositionGuide = 'Thirds';
   bool _showSettings = false;
   bool _focusLocked = false;
   bool _exposureLocked = false;
@@ -1328,17 +1328,6 @@ class _CameraScreenState extends State<CameraScreen> {
 
   Widget _gradeSlider(String label, double value, double min, double max, ValueChanged<double> onChanged) => Padding(padding: const EdgeInsets.only(top: 2), child: Row(children: [SizedBox(width: 78, child: Text(label, style: const TextStyle(fontSize: 11, color: Colors.white70))), Expanded(child: Slider(value: value.clamp(min,max).toDouble(), min: min, max: max, onChanged: onChanged, activeColor: const Color(0xFFB8F36B))), SizedBox(width: 38, child: Text(value.toStringAsFixed(2), textAlign: TextAlign.end, style: const TextStyle(fontSize: 10)))]));
 
-  Widget _smallControl(IconData icon, String label, VoidCallback onTap) => TextButton(
-        onPressed: onTap,
-        child: Column(
-          children: [
-            Icon(icon, size: 21),
-            const SizedBox(height: 3),
-            Text(label, style: const TextStyle(fontSize: 9, letterSpacing: 1)),
-          ],
-        ),
-      );
-
   Widget _modeButton(String mode) => InkWell(
         onTap: () {
           if (_recording && mode != 'VIDEO') {
@@ -1367,11 +1356,7 @@ class _CameraScreenState extends State<CameraScreen> {
         ),
       );
 
-  Widget _pill(String text, Color background, Color foreground) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(20)),
-        child: Text(text, style: TextStyle(color: foreground, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-      );
+
 }
 
 class _LiveHistogram extends StatelessWidget {
