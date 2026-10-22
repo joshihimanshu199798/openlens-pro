@@ -1575,14 +1575,94 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
     if (mounted) setState(() => _recent = next);
   }
 
+
+  List<Color> _swatchColors(_SignaturePreset preset) {
+    final warmth = preset.warmth * 0.22;
+    final tint = preset.tint * 0.12;
+    final saturation = preset.saturation.clamp(0.0, 1.6);
+    final contrast = preset.contrast.clamp(0.5, 1.6);
+    Color tone(double r, double g, double b) {
+      final luma = 0.213 * r + 0.715 * g + 0.072 * b;
+      double grade(double value, double warm, double tintShift) =>
+          ((luma + (value - luma) * saturation - 0.5) * contrast + 0.5 +
+           preset.brightness * 0.65 + warm * warmth + tintShift * tint).clamp(0.0, 1.0);
+      int ch(double value) => (value * 255).round().clamp(0, 255);
+      return Color.fromARGB(255, ch(grade(r, 1, 0)), ch(grade(g, 0, 1)), ch(grade(b, -1, -0.35)));
+    }
+    return [tone(0.96, 0.56, 0.35), tone(0.27, 0.60, 0.42), tone(0.33, 0.48, 0.82)];
+  }
+
+  Widget _lookCard(_SignaturePreset preset) {
+    final selected = preset.name == widget.activePreset;
+    final favorite = _favorites.contains(preset.name);
+    final colors = _swatchColors(preset);
+    return Material(
+      color: selected ? const Color(0xFF202B19) : const Color(0xFF14191D),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () {
+          widget.onApply(preset);
+          _recordRecent(preset.name).catchError((_) {});
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: selected ? const Color(0xFFC5FF72) : const Color(0xFF30383D), width: selected ? 1.7 : 1),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(19)),
+              child: SizedBox(height: 94, child: Stack(fit: StackFit.expand, children: [
+                DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
+                  begin: Alignment.topLeft, end: Alignment.bottomRight, colors: colors))),
+                Positioned(left: 10, right: 10, bottom: 10, child: Container(
+                  height: 29,
+                  decoration: BoxDecoration(color: Colors.black.withValues(alpha: .25), borderRadius: BorderRadius.circular(9), border: Border.all(color: Colors.white.withValues(alpha: .15))),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(children: [
+                    Icon(preset.icon, size: 15, color: Colors.white),
+                    const SizedBox(width: 6),
+                    Expanded(child: Text(preset.category.toUpperCase(), maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 8, letterSpacing: .8, fontWeight: FontWeight.w900, color: Colors.white))),
+                  ]),
+                )),
+                if (selected) const Positioned(top: 8, left: 8, child: Icon(Icons.check_circle_rounded, color: Color(0xFFC5FF72), size: 23)),
+                Positioned(top: 1, right: 1, child: IconButton(
+                  tooltip: favorite ? 'Remove favourite' : 'Add favourite',
+                  onPressed: () => _toggleFavorite(preset.name),
+                  icon: Icon(favorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                    color: favorite ? const Color(0xFFFF8795) : Colors.white, size: 19),
+                  style: IconButton.styleFrom(backgroundColor: Colors.black.withValues(alpha: .27), minimumSize: const Size(34, 34), padding: EdgeInsets.zero),
+                )),
+              ])),
+            ),
+            Padding(padding: const EdgeInsets.fromLTRB(11, 10, 11, 10), child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(preset.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 4),
+                Text(preset.hint, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 10, color: Colors.white60)),
+                const SizedBox(height: 10),
+                Row(children: [
+                  Expanded(child: Text(selected ? 'APPLIED' : 'TAP TO APPLY',
+                    style: TextStyle(fontSize: 9, letterSpacing: .8, fontWeight: FontWeight.w900,
+                      color: selected ? const Color(0xFFC5FF72) : Colors.white54))),
+                  Icon(selected ? Icons.check_rounded : Icons.arrow_outward_rounded, size: 15,
+                    color: selected ? const Color(0xFFC5FF72) : Colors.white54),
+                ]),
+              ],
+            )),
+          ]),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final categoryNames = widget.presets
-        .map((p) => p.category)
-        .where((c) => c != 'Signature')
-        .toSet()
-        .toList()
-      ..sort();
+    final categoryNames = widget.presets.map((p) => p.category).where((c) => c != 'Signature').toSet().toList()..sort();
     final categories = <String>['All', ...categoryNames];
     final query = _query.trim().toLowerCase();
     final filtered = widget.presets.where((p) =>
@@ -1590,202 +1670,101 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
       (_view != 'Favorites' || _favorites.contains(p.name)) &&
       (_view != 'Recent' || _recent.contains(p.name)) &&
       ('${p.name} ${p.hint} ${p.category}'.toLowerCase().contains(query))).toList()
-      ..sort((a, b) {
-        if (_view == 'Recent') return _recent.indexOf(a.name).compareTo(_recent.indexOf(b.name));
-        return 0;
-      });
+      ..sort((a, b) => _view == 'Recent' ? _recent.indexOf(a.name).compareTo(_recent.indexOf(b.name)) : 0);
     final activePresets = widget.presets.where((p) => p.name == widget.activePreset).toList();
     final _SignaturePreset? active = activePresets.isEmpty ? null : activePresets.first;
 
     return Scaffold(
+      backgroundColor: const Color(0xFF080A0C),
       appBar: AppBar(
-        titleSpacing: 18,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Find your look', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 19)),
-            Text('Search, preview and apply in one tap', style: TextStyle(fontSize: 11, color: Colors.white60)),
-          ],
-        ),
-        backgroundColor: const Color(0xFF080A0C),
+        backgroundColor: const Color(0xFF080A0C), surfaceTintColor: Colors.transparent, titleSpacing: 18,
+        title: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Looks', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 22, letterSpacing: -.4)),
+          Text('Find a mood. Apply it instantly.', style: TextStyle(fontSize: 11, color: Colors.white60)),
+        ]),
+        actions: [IconButton(tooltip: 'Reset to Auto', onPressed: () {
+          final auto = widget.presets.where((p) => p.name == 'Auto');
+          if (auto.isNotEmpty) widget.onApply(auto.first);
+        }, icon: const Icon(Icons.restart_alt_rounded)), const SizedBox(width: 6)],
       ),
-      body: Column(
-        children: [
-          if (active != null)
-            Container(
-              margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1B2417),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFF455735)),
-              ),
-              child: Row(children: [
-                const Icon(Icons.check_circle_rounded, color: Color(0xFFB8F36B), size: 22),
-                const SizedBox(width: 10),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('APPLIED NOW', style: TextStyle(fontSize: 9, color: Colors.white60, fontWeight: FontWeight.w800, letterSpacing: 1)),
-                  const SizedBox(height: 2),
-                  Text(active.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
-                ])),
-                TextButton(
-                  onPressed: () => widget.onApply(widget.presets.firstWhere((p) => p.name == 'Auto', orElse: () => widget.presets.first)),
-                  child: const Text('Reset'),
-                ),
-              ]),
-            ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-            child: TextField(
-              onChanged: (value) => setState(() => _query = value),
-              textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                hintText: 'Search by look or mood…',
-                prefixIcon: const Icon(Icons.search_rounded),
-                suffixIcon: _query.isEmpty ? null : IconButton(
-                  tooltip: 'Clear search',
-                  onPressed: () => setState(() => _query = ''),
-                  icon: const Icon(Icons.close_rounded),
-                ),
-                filled: true,
-                fillColor: const Color(0xFF171C1F),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF2B3338))),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFB8F36B), width: 1.4)),
-                isDense: true,
-              ),
-            ),
-          ),
-          SizedBox(
-            height: 42,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              scrollDirection: Axis.horizontal,
-              itemCount: categories.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 7),
-              itemBuilder: (context, index) {
-                final category = categories[index];
-                final selected = _category == category;
-                return ChoiceChip(
-                  label: Text(category == 'All' ? 'All looks' : category),
-                  selected: selected,
-                  onSelected: (_) => setState(() => _category = category),
-                  selectedColor: const Color(0xFFB8F36B),
-                  labelStyle: TextStyle(color: selected ? Colors.black : Colors.white70, fontSize: 11, fontWeight: FontWeight.w700),
-                  side: BorderSide(color: selected ? const Color(0xFFB8F36B) : const Color(0xFF30383D)),
-                  visualDensity: VisualDensity.compact,
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Wrap(
-              spacing: 8,
-              children: ['All', 'Favorites', 'Recent'].map((view) => ChoiceChip(
-                label: Text(view),
-                selected: _view == view,
-                onSelected: (_) => setState(() => _view = view),
-                selectedColor: const Color(0xFFB8F36B),
-                labelStyle: TextStyle(
-                  color: _view == view ? Colors.black : Colors.white70,
-                  fontWeight: FontWeight.w700,
-                ),
-                side: BorderSide(color: _view == view ? const Color(0xFFB8F36B) : const Color(0xFF30383D)),
-              )).toList(),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 2, 18, 8),
+      body: Column(children: [
+        if (active != null)
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 4, 16, 12), padding: const EdgeInsets.all(13),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [Color(0xFF202B19), Color(0xFF151C17)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+              borderRadius: BorderRadius.circular(17), border: Border.all(color: const Color(0xFF50683A))),
             child: Row(children: [
-              Text('${filtered.length} looks', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
-              const Spacer(),
-              const Text('Tap a look to apply it', style: TextStyle(fontSize: 11, color: Colors.white54)),
+              Container(width: 38, height: 38, decoration: BoxDecoration(color: const Color(0xFFC5FF72).withValues(alpha: .13), borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.auto_awesome_rounded, color: Color(0xFFC5FF72))),
+              const SizedBox(width: 11),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('CURRENT LOOK', style: TextStyle(fontSize: 9, color: Colors.white60, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+                const SizedBox(height: 3),
+                Text(active.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900)),
+              ])),
+              const Icon(Icons.check_circle_rounded, color: Color(0xFFC5FF72), size: 22),
             ]),
           ),
-          Expanded(
-            child: filtered.isEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(28),
-                    child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.search_off_rounded, size: 42, color: Colors.white38),
-                      const SizedBox(height: 10),
-                      const Text('No matching looks', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 5),
-                      const Text('Try another name or choose a different category.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white60, fontSize: 12)),
-                      const SizedBox(height: 12),
-                      OutlinedButton(onPressed: () => setState(() { _query = ''; _category = 'All'; }), child: const Text('Clear filters')),
-                    ]),
-                  ),
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 24),
-                  itemCount: filtered.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final preset = filtered[index];
-                    final selected = preset.name == widget.activePreset;
-                    return Material(
-                      color: selected ? const Color(0xFF202B19) : const Color(0xFF14191C),
-                      borderRadius: BorderRadius.circular(16),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(16),
-                        onTap: () {
-                          // Apply immediately; persistence must never block a tap.
-                          // SharedPreferences can fail or stall on some devices, so
-                          // record the recent look only as a best-effort background task.
-                          widget.onApply(preset);
-                          _recordRecent(preset.name).catchError((_) {});
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: selected ? const Color(0xFFB8F36B) : const Color(0xFF2B3338)),
-                          ),
-                          child: Row(children: [
-                            Container(
-                              width: 44, height: 44,
-                              decoration: BoxDecoration(
-                                color: selected ? const Color(0xFFB8F36B) : const Color(0xFF252D31),
-                                borderRadius: BorderRadius.circular(13),
-                              ),
-                              child: Icon(preset.icon, color: selected ? Colors.black : const Color(0xFFB8F36B), size: 22),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              Text(preset.name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
-                              const SizedBox(height: 3),
-                              Text(preset.category == 'Signature' ? preset.hint : preset.category,
-                                maxLines: 1, overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 11, color: Colors.white60)),
-                            ])),
-                            const SizedBox(width: 8),
-                            IconButton(
-                              tooltip: _favorites.contains(preset.name) ? 'Remove favorite' : 'Add favorite',
-                              visualDensity: VisualDensity.compact,
-                              onPressed: () => _toggleFavorite(preset.name),
-                              icon: Icon(
-                                _favorites.contains(preset.name) ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                                color: _favorites.contains(preset.name) ? const Color(0xFFFF7B8B) : Colors.white54,
-                                size: 20,
-                              ),
-                            ),
-                            if (selected)
-                              const Icon(Icons.check_circle_rounded, color: Color(0xFFB8F36B), size: 22)
-                            else
-                              const Icon(Icons.chevron_right_rounded, color: Colors.white54, size: 24),
-                          ]),
-                        ),
-                      ),
-                    );
-                  },
-                ),
+        Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 10), child: TextField(
+          onChanged: (value) => setState(() => _query = value), textInputAction: TextInputAction.search,
+          decoration: InputDecoration(
+            hintText: 'Search looks, film, mood…', prefixIcon: const Icon(Icons.search_rounded),
+            suffixIcon: _query.isEmpty ? null : IconButton(tooltip: 'Clear search', onPressed: () => setState(() => _query = ''), icon: const Icon(Icons.close_rounded)),
+            filled: true, fillColor: const Color(0xFF151A1E),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFF30383D))),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: const BorderSide(color: Color(0xFFC5FF72), width: 1.4)),
+            isDense: true,
           ),
-        ],
-      ),
+        )),
+        SizedBox(height: 42, child: ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 16), scrollDirection: Axis.horizontal, itemCount: categories.length,
+          separatorBuilder: (_, __) => const SizedBox(width: 7),
+          itemBuilder: (context, index) {
+            final category = categories[index]; final selected = _category == category;
+            return ChoiceChip(
+              label: Text(category == 'All' ? 'All looks' : category), selected: selected,
+              onSelected: (_) => setState(() => _category = category), selectedColor: const Color(0xFFC5FF72),
+              labelStyle: TextStyle(color: selected ? Colors.black : Colors.white70, fontSize: 11, fontWeight: FontWeight.w800),
+              side: BorderSide(color: selected ? const Color(0xFFC5FF72) : const Color(0xFF30383D)),
+              visualDensity: VisualDensity.compact,
+            );
+          },
+        )),
+        Padding(padding: const EdgeInsets.fromLTRB(16, 5, 16, 5), child: Row(children: [
+          Expanded(child: SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(value: 'All', label: Text('Explore'), icon: Icon(Icons.grid_view_rounded, size: 16)),
+              ButtonSegment(value: 'Favorites', label: Text('Saved'), icon: Icon(Icons.favorite_border_rounded, size: 16)),
+              ButtonSegment(value: 'Recent', label: Text('Recent'), icon: Icon(Icons.history_rounded, size: 16)),
+            ],
+            selected: {_view}, onSelectionChanged: (value) => setState(() => _view = value.first),
+            showSelectedIcon: false,
+            style: SegmentedButton.styleFrom(selectedBackgroundColor: const Color(0xFFC5FF72),
+              selectedForegroundColor: const Color(0xFF10130B), foregroundColor: Colors.white70,
+              side: const BorderSide(color: Color(0xFF30383D)),
+              textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+          )),
+          const SizedBox(width: 10),
+          Text('${filtered.length}', style: const TextStyle(fontSize: 12, color: Colors.white60, fontWeight: FontWeight.w800)),
+        ])),
+        Expanded(child: filtered.isEmpty
+          ? Center(child: Padding(padding: const EdgeInsets.all(28), child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const Icon(Icons.filter_alt_off_rounded, size: 42, color: Colors.white38),
+              const SizedBox(height: 10),
+              const Text('No looks found', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 5),
+              const Text('Try another search or clear the active filters.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white60, fontSize: 12)),
+              const SizedBox(height: 12),
+              OutlinedButton(onPressed: () => setState(() { _query = ''; _category = 'All'; _view = 'All'; }), child: const Text('Show all looks')),
+            ])))
+          : GridView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 7, 16, 24),
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 230, mainAxisSpacing: 12, crossAxisSpacing: 12, mainAxisExtent: 205),
+              itemCount: filtered.length, itemBuilder: (context, index) => _lookCard(filtered[index]),
+            )),
+      ]),
     );
   }
 }
