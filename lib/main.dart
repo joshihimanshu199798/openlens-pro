@@ -1038,6 +1038,59 @@ class _CameraScreenState extends State<CameraScreen> {
           )
         else
           SizedBox(height: compact ? 12 : 18),
+        // Quick looks are visible directly in the camera for easy comparison.
+        SizedBox(
+          height: 66,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            children: [
+              for (final lookName in _quickLookNames)
+                Builder(builder: (context) {
+                  final matches = _allPresets.where((p) => p.name == lookName);
+                  if (matches.isEmpty) return const SizedBox.shrink();
+                  final look = matches.first;
+                  final selected = _activePreset == look.name;
+                  return GestureDetector(
+                    onTap: () => _applyPreset(look),
+                    child: Container(
+                      width: 76,
+                      margin: const EdgeInsets.only(right: 9, bottom: 3),
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: .42),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: selected ? const Color(0xFFC5FF72) : Colors.white24, width: selected ? 2 : 1),
+                      ),
+                      child: Column(children: [
+                        Expanded(child: ClipRRect(
+                          borderRadius: BorderRadius.circular(7),
+                          child: CustomPaint(painter: _LookSamplePainter(_previewColors(look)), child: const SizedBox.expand()),
+                        )),
+                        const SizedBox(height: 4),
+                        Text(look.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800,
+                            color: selected ? const Color(0xFFC5FF72) : Colors.white)),
+                      ]),
+                    ),
+                  );
+                }),
+              GestureDetector(
+                onTap: _openLooks,
+                child: Container(
+                  width: 66,
+                  decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.white24)),
+                  child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Icon(Icons.tune_rounded, size: 19, color: Color(0xFFC5FF72)),
+                    SizedBox(height: 3),
+                    Text('All looks', style: TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w800)),
+                  ]),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -1525,6 +1578,50 @@ class _SignaturePreset {
 }
 
 
+List<Color> _previewColors(_SignaturePreset preset) {
+  final warmth = preset.warmth;
+  if (preset.saturation < .7) return const [Color(0xFFB7B7B7), Color(0xFF626A72), Color(0xFF24272C)];
+  if (warmth > .2) return const [Color(0xFFFFC078), Color(0xFFCA7A45), Color(0xFF475B50)];
+  if (warmth < -.15) return const [Color(0xFFB9E5F7), Color(0xFF548DAA), Color(0xFF303B6D)];
+  return const [Color(0xFFFFB16B), Color(0xFF4FAF87), Color(0xFF477FE5)];
+}
+
+class _LookSamplePainter extends CustomPainter {
+  _LookSamplePainter(this.colors);
+  final List<Color> colors;
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    canvas.drawRect(rect, Paint()..shader = LinearGradient(
+      begin: Alignment.topCenter, end: Alignment.bottomCenter,
+      colors: [colors[0], colors[1], colors[2]],
+      stops: const [0, .58, 1],
+    ).createShader(rect));
+    final sunPaint = Paint()..color = const Color(0xFFFFE5A3).withValues(alpha: .88);
+    canvas.drawCircle(Offset(size.width * .72, size.height * .27), size.shortestSide * .12, sunPaint);
+    final hillPaint = Paint()..color = colors[2].withValues(alpha: .88);
+    final hill = Path()
+      ..moveTo(0, size.height * .78)
+      ..quadraticBezierTo(size.width * .25, size.height * .38, size.width * .48, size.height * .73)
+      ..quadraticBezierTo(size.width * .75, size.height * .45, size.width, size.height * .68)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(hill, hillPaint);
+    final foreground = Paint()..color = const Color(0xFF17231F).withValues(alpha: .8);
+    final silhouette = Path()
+      ..moveTo(size.width * .18, size.height)
+      ..lineTo(size.width * .30, size.height * .58)
+      ..lineTo(size.width * .39, size.height * .58)
+      ..lineTo(size.width * .52, size.height)
+      ..close();
+    canvas.drawPath(silhouette, foreground);
+    canvas.drawCircle(Offset(size.width * .345, size.height * .51), size.shortestSide * .075, foreground);
+  }
+  @override
+  bool shouldRepaint(covariant _LookSamplePainter oldDelegate) => oldDelegate.colors != colors;
+}
+
 class _PresetLibraryPage extends StatefulWidget {
   const _PresetLibraryPage({required this.presets, required this.activePreset, required this.onApply});
   final List<_SignaturePreset> presets;
@@ -1614,8 +1711,7 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
             ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(19)),
               child: SizedBox(height: 94, child: Stack(fit: StackFit.expand, children: [
-                DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
-                  begin: Alignment.topLeft, end: Alignment.bottomRight, colors: colors))),
+                CustomPaint(painter: _LookSamplePainter(colors), child: const SizedBox.expand()),
                 Positioned(left: 10, right: 10, bottom: 10, child: Container(
                   height: 29,
                   decoration: BoxDecoration(color: Colors.black.withValues(alpha: .25), borderRadius: BorderRadius.circular(9), border: Border.all(color: Colors.white.withValues(alpha: .15))),
