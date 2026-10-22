@@ -1586,7 +1586,7 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
       double grade(double value, double warm, double tintShift) =>
           ((luma + (value - luma) * saturation - 0.5) * contrast + 0.5 +
            preset.brightness * 0.65 + warm * warmth + tintShift * tint).clamp(0.0, 1.0);
-      int ch(double value) => (value * 255).round().clamp(0, 255);
+      int ch(double value) => (value * 255).round().clamp(0, 255).toInt();
       return Color.fromARGB(255, ch(grade(r, 1, 0)), ch(grade(g, 0, 1)), ch(grade(b, -1, -0.35)));
     }
     return [tone(0.96, 0.56, 0.35), tone(0.27, 0.60, 0.42), tone(0.33, 0.48, 0.82)];
