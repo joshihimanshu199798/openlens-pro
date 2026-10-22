@@ -1,3 +1,6 @@
+// Keep the legacy Explore implementation available while the Video tab replaces it.
+// ignore_for_file: unused_element
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -40,16 +43,16 @@ class OpenLensApp extends StatelessWidget {
   }
 }
 
-class CameraScreen extends StatefulWidget {
-  const CameraScreen({super.key, this.initialPreset, this.startInVideo = false});
+class _CameraScreen extends StatefulWidget {
+  const _CameraScreen({super.key, this.initialPreset, this.startInVideo = false});
   final _SignaturePreset? initialPreset;
   final bool startInVideo;
 
   @override
-  State<CameraScreen> createState() => _CameraScreenState();
+  State<_CameraScreen> createState() => __CameraScreenState();
 }
 
-class _CameraScreenState extends State<CameraScreen> {
+class __CameraScreenState extends State<_CameraScreen> {
   CameraController? _controller;
   List<CameraDescription> _cameras = [];
   int _cameraIndex = 0;
@@ -1953,10 +1956,10 @@ class _OpenLensShellState extends State<OpenLensShell> {
         onBrowse: () => setState(() => _tab = 1),
       ),
       _VideoLookPickerPage(
-        presets: [...CameraScreenPresets.all],
+        presets: [...__CameraScreenPresets.all],
         onSelected: (preset) => setState(() { _videoPreset = preset; _tab = 2; }),
       ),
-      _tab == 2 ? CameraScreen(key: ValueKey(_videoPreset?.name ?? 'default-camera'), initialPreset: _videoPreset, startInVideo: _videoPreset != null) : const _CameraLanding(),
+      _tab == 2 ? _CameraScreen(key: ValueKey(_videoPreset?.name ?? 'default-camera'), initialPreset: _videoPreset, startInVideo: _videoPreset != null) : const _CameraLanding(),
       _PhotoEditorScreen(
         image: _editingImage,
         onPick: _pickImage,
@@ -1997,7 +2000,7 @@ class _OpenLensShellState extends State<OpenLensShell> {
   }
 }
 
-class CameraScreenPresets {
+class __CameraScreenPresets {
   static List<_SignaturePreset> get all => [
     const _SignaturePreset('Auto', 'Natural camera', Icons.auto_awesome_rounded, 0, 1, FlashMode.off, category: 'Natural'),
     const _SignaturePreset('Portra Glow', 'Warm skin, soft film', Icons.camera_roll_rounded, .06, 1, FlashMode.off, category: 'Film', brightness: .03, contrast: 1.03, saturation: .92, warmth: .22, tint: .02),
