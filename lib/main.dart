@@ -41,7 +41,9 @@ class OpenLensApp extends StatelessWidget {
 }
 
 class CameraScreen extends StatefulWidget {
-  const CameraScreen({super.key});
+  const CameraScreen({super.key, this.initialPreset, this.startInVideo = false});
+  final _SignaturePreset? initialPreset;
+  final bool startInVideo;
 
   @override
   State<CameraScreen> createState() => _CameraScreenState();
@@ -206,6 +208,16 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.startInVideo) _mode = 'VIDEO';
+    if (widget.initialPreset != null) {
+      final p = widget.initialPreset!;
+      _activePreset = p.name;
+      _gradeBrightness = p.brightness;
+      _gradeContrast = p.contrast;
+      _gradeSaturation = p.saturation;
+      _gradeWarmth = p.warmth;
+      _gradeTint = p.tint;
+    }
     _loadCustomPresets();
     _loadQuickLooks();
     _initializeCamera();
@@ -225,6 +237,10 @@ class _CameraScreenState extends State<CameraScreen> {
         return;
       }
       await _openCamera(_cameraIndex);
+      if (widget.initialPreset != null && mounted) {
+        await _applyPreset(widget.initialPreset!);
+        if (mounted) setState(() => _mode = widget.startInVideo ? 'VIDEO' : _mode);
+      }
     } catch (e) {
       if (mounted) setState(() => _status = 'Camera unavailable: $e');
     }
@@ -1884,6 +1900,7 @@ class OpenLensShell extends StatefulWidget {
 
 class _OpenLensShellState extends State<OpenLensShell> {
   int _tab = 0;
+  _SignaturePreset? _videoPreset;
   final List<XFile> _recent = [];
   XFile? _editingImage;
 
@@ -1935,8 +1952,11 @@ class _OpenLensShellState extends State<OpenLensShell> {
         onCamera: () => setState(() => _tab = 2),
         onBrowse: () => setState(() => _tab = 1),
       ),
-      _ExplorePage(recent: _recent, onPick: _pickImage, onOpen: _openEditor),
-      _tab == 2 ? const CameraScreen() : const _CameraLanding(),
+      _VideoLookPickerPage(
+        presets: [...CameraScreenPresets.all],
+        onSelected: (preset) => setState(() { _videoPreset = preset; _tab = 2; }),
+      ),
+      _tab == 2 ? CameraScreen(key: ValueKey(_videoPreset?.name ?? 'default-camera'), initialPreset: _videoPreset, startInVideo: _videoPreset != null) : const _CameraLanding(),
       _PhotoEditorScreen(
         image: _editingImage,
         onPick: _pickImage,
@@ -1977,6 +1997,89 @@ class _OpenLensShellState extends State<OpenLensShell> {
   }
 }
 
+class CameraScreenPresets {
+  static List<_SignaturePreset> get all => [
+    const _SignaturePreset('Auto', 'Natural camera', Icons.auto_awesome_rounded, 0, 1, FlashMode.off, category: 'Natural'),
+    const _SignaturePreset('Portra Glow', 'Warm skin, soft film', Icons.camera_roll_rounded, .06, 1, FlashMode.off, category: 'Film', brightness: .03, contrast: 1.03, saturation: .92, warmth: .22, tint: .02),
+    const _SignaturePreset('Gold 200', 'Golden vintage film', Icons.camera_roll_rounded, .10, 1, FlashMode.off, category: 'Film', brightness: .05, contrast: 1.12, saturation: 1.12, warmth: .35, tint: .01),
+    const _SignaturePreset('Faded Film', 'Soft, faded memories', Icons.camera_roll_rounded, .16, 1, FlashMode.off, category: 'Film', brightness: .08, contrast: .86, saturation: .78, warmth: .16, tint: .03),
+    const _SignaturePreset('Classic 400', 'Classic analog tones', Icons.camera_roll_rounded, .02, 1, FlashMode.off, category: 'Film', brightness: .01, contrast: 1.14, saturation: 1.05, warmth: .12),
+    const _SignaturePreset('Soft Negative', 'Matte, muted colors', Icons.camera_roll_rounded, .12, 1, FlashMode.off, category: 'Film', brightness: .06, contrast: .92, saturation: .88, warmth: .18, tint: .04),
+    const _SignaturePreset('Chrome Slide', 'Rich vivid colors', Icons.camera_roll_rounded, 0, 1, FlashMode.off, category: 'Film', contrast: 1.22, saturation: 1.22, warmth: .06, tint: -.02),
+    const _SignaturePreset('Teal & Amber', 'Cinematic movie tones', Icons.movie_filter_rounded, -.04, 1, FlashMode.off, category: 'Cinematic', brightness: -.02, contrast: 1.22, saturation: .94, warmth: .18, tint: -.06),
+    const _SignaturePreset('Neo Noir', 'Moody dark cinema', Icons.movie_filter_rounded, -.24, 1, FlashMode.off, category: 'Cinematic', brightness: -.12, contrast: 1.38, saturation: .78, warmth: -.08, tint: .01),
+    const _SignaturePreset('Bleach Bypass', 'High contrast movie look', Icons.movie_filter_rounded, -.06, 1, FlashMode.off, category: 'Cinematic', brightness: -.03, contrast: 1.42, saturation: .62, warmth: -.04),
+    const _SignaturePreset('Monochrome', 'Classic black and white', Icons.filter_b_and_w_rounded, 0, 1, FlashMode.off, category: 'Black & White', contrast: 1.12, saturation: 0),
+    const _SignaturePreset('Dust & Gold', 'Warm daylight', Icons.wb_sunny_rounded, .3, 1, FlashMode.off, category: 'Vintage', brightness: .04, contrast: 1.08, saturation: .92, warmth: .42, tint: .04),
+    const _SignaturePreset('Moonmilk', 'Soft low-light mood', Icons.nightlight_round, 0, 1, FlashMode.off, category: 'Vintage', brightness: .04, contrast: .92, saturation: .78, warmth: -.08),
+    const _SignaturePreset('Neon Bazaar', 'Vibrant night lights', Icons.bolt_rounded, 0, 1, FlashMode.off, category: 'Creative', contrast: 1.2, saturation: 1.3, warmth: -.05, tint: -.04),
+    const _SignaturePreset('Monsoon Chrome', 'Bright, punchy skies', Icons.water_drop_rounded, 0, 1, FlashMode.off, category: 'Creative', contrast: 1.12, saturation: 1.18, warmth: -.04),
+  ];
+}
+
+class _VideoLookPickerPage extends StatefulWidget {
+  const _VideoLookPickerPage({required this.presets, required this.onSelected});
+  final List<_SignaturePreset> presets;
+  final ValueChanged<_SignaturePreset> onSelected;
+  @override
+  State<_VideoLookPickerPage> createState() => _VideoLookPickerPageState();
+}
+
+class _VideoLookPickerPageState extends State<_VideoLookPickerPage> {
+  String _category = 'All';
+  String _search = '';
+  @override
+  Widget build(BuildContext context) {
+    final categories = ['All', ...widget.presets.map((p) => p.category).toSet().toList()..sort()];
+    final query = _search.toLowerCase().trim();
+    final looks = widget.presets.where((p) =>
+      (_category == 'All' || p.category == _category) &&
+      ('${p.name} ${p.hint} ${p.category}'.toLowerCase().contains(query))).toList();
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8F8F6),
+      appBar: AppBar(title: const Text('Retro video looks', style: TextStyle(fontWeight: FontWeight.w900)),
+        backgroundColor: const Color(0xFFF8F8F6)),
+      body: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Padding(padding: EdgeInsets.fromLTRB(18, 0, 18, 8), child: Text('Choose a look first. Your camera opens in video mode with that look selected.',
+          style: TextStyle(color: Color(0xFF777777), fontSize: 13))),
+        Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: TextField(
+          onChanged: (v) => setState(() => _search = v),
+          decoration: InputDecoration(hintText: 'Search retro filters', prefixIcon: const Icon(Icons.search_rounded),
+            filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE4E4E0)))),
+        )),
+        const SizedBox(height: 10),
+        SizedBox(height: 42, child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 16),
+          children: [for (final c in categories) Padding(padding: const EdgeInsets.only(right: 7), child: ChoiceChip(
+            label: Text(c), selected: c == _category, onSelected: (_) => setState(() => _category = c),
+            selectedColor: const Color(0xFFB8F36B), labelStyle: TextStyle(fontWeight: FontWeight.w800, color: c == _category ? Colors.black : const Color(0xFF555555)),
+          ))])),
+        const Padding(padding: EdgeInsets.fromLTRB(18, 10, 18, 8), child: Text('TAP A PREVIEW TO OPEN VIDEO CAMERA', style: TextStyle(fontSize: 10, letterSpacing: 1, fontWeight: FontWeight.w900, color: Color(0xFF777777)))),
+        Expanded(child: GridView.builder(padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: .92),
+          itemCount: looks.length, itemBuilder: (context, i) {
+            final p = looks[i];
+            return Material(color: Colors.white, borderRadius: BorderRadius.circular(18), clipBehavior: Clip.antiAlias,
+              child: InkWell(onTap: () => widget.onSelected(p), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(child: Stack(fit: StackFit.expand, children: [
+                  CustomPaint(painter: _LookSamplePainter(_previewColors(p)), child: const SizedBox.expand()),
+                  Positioned(left: 9, top: 9, child: Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                    decoration: BoxDecoration(color: Colors.black.withValues(alpha: .55), borderRadius: BorderRadius.circular(9)),
+                    child: Text(p.category.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900)))),
+                  const Positioned(right: 9, bottom: 9, child: CircleAvatar(radius: 15, backgroundColor: Color(0xFFC5FF72), child: Icon(Icons.videocam_rounded, color: Colors.black, size: 17))),
+                ])),
+                Padding(padding: const EdgeInsets.fromLTRB(10, 9, 10, 10), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF202124))),
+                  const SizedBox(height: 3),
+                  Text(p.hint, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, color: Color(0xFF777777))),
+                ])),
+              ])),
+            );
+          })),
+      ]),
+    );
+  }
+}
+
 class _WorkspaceNavigation extends StatelessWidget {
   const _WorkspaceNavigation({required this.selected, required this.onSelected});
   final int selected;
@@ -1984,7 +2087,7 @@ class _WorkspaceNavigation extends StatelessWidget {
 
   static const _items = [
     (Icons.home_rounded, 'Home'),
-    (Icons.explore_outlined, 'Explore'),
+    (Icons.video_library_outlined, 'Video'),
     (Icons.camera_alt_outlined, 'Camera'),
     (Icons.tune_rounded, 'Edit'),
     (Icons.person_outline_rounded, 'Profile'),
