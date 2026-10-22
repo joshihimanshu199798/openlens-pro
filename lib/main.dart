@@ -1990,7 +1990,7 @@ class _HomeDashboard extends StatelessWidget {
           const Expanded(child: Text('Recent Editing', style: TextStyle(fontSize: 23, letterSpacing: -.5, color: _workspaceInk, fontWeight: FontWeight.w900))),
           IconButton(onPressed: onPick, tooltip: 'Add photo', icon: const Icon(Icons.add_circle_outline_rounded, color: _workspaceInk)),
         ]))),
-        SliverPadding(padding: const EdgeInsets.fromLTRB(22, 0, 22, 12), sliver: const SliverToBoxAdapter(child: Text('Pick up where your creativity left off', style: TextStyle(fontSize: 12, color: _workspaceMuted)))),
+        const SliverPadding(padding: EdgeInsets.fromLTRB(22, 0, 22, 12), sliver: SliverToBoxAdapter(child: Text('Pick up where your creativity left off', style: TextStyle(fontSize: 12, color: _workspaceMuted)))),
         if (recent.isEmpty)
           SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.fromLTRB(22, 20, 22, 30), child: InkWell(
             onTap: onPick,
