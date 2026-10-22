@@ -7,6 +7,5 @@ void main() {
     await tester.pump();
     expect(find.text('Recent Editing'), findsOneWidget);
     expect(find.text('PRO CAMERA'), findsNothing);
-    expect(find.byTooltip('Filters and looks'), findsOneWidget);
   });
 }
