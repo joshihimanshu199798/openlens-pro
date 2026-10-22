@@ -27,15 +27,15 @@ class OpenLensApp extends StatelessWidget {
       title: 'OpenLens Pro',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        brightness: Brightness.dark,
+        brightness: Brightness.light,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFB8F36B),
-          brightness: Brightness.dark,
+          seedColor: const Color(0xFF202124),
+          brightness: Brightness.light,
         ),
-        scaffoldBackgroundColor: const Color(0xFF080A0C),
+        scaffoldBackgroundColor: const Color(0xFFF8F8F6),
         useMaterial3: true,
       ),
-      home: const CameraScreen(),
+      home: const OpenLensShell(),
     );
   }
 }
@@ -1767,4 +1767,612 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
       ]),
     );
   }
+}
+
+
+// -----------------------------------------------------------------------------
+// Light-theme photo workspace. The original live camera and Looks library remain
+// available as dedicated destinations rather than being replaced by mock screens.
+// -----------------------------------------------------------------------------
+const Color _workspaceInk = Color(0xFF202124);
+const Color _workspaceMuted = Color(0xFF858585);
+const Color _workspacePaper = Color(0xFFF8F8F6);
+const Color _workspaceAccent = Color(0xFFB8F36B);
+
+class OpenLensShell extends StatefulWidget {
+  const OpenLensShell({super.key});
+
+  @override
+  State<OpenLensShell> createState() => _OpenLensShellState();
+}
+
+class _OpenLensShellState extends State<OpenLensShell> {
+  int _tab = 0;
+  final List<XFile> _recent = [];
+  XFile? _editingImage;
+
+  Future<void> _pickImage({ImageSource source = ImageSource.gallery}) async {
+    try {
+      final picker = ImagePicker();
+      final image = source == ImageSource.camera
+          ? await picker.pickImage(source: ImageSource.camera)
+          : await picker.pickImage(source: ImageSource.gallery);
+      if (image == null || !mounted) return;
+      setState(() {
+        _editingImage = image;
+        _recent.removeWhere((item) => item.path == image.path);
+        _recent.insert(0, image);
+        _tab = 3;
+      });
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open that image. Check photo permissions and try again.')),
+        );
+      }
+    }
+  }
+
+  void _openEditor(XFile image) {
+    setState(() {
+      _editingImage = image;
+      _recent.removeWhere((item) => item.path == image.path);
+      _recent.insert(0, image);
+      _tab = 3;
+    });
+  }
+
+  void _rememberEdited(XFile image) {
+    setState(() {
+      _recent.removeWhere((item) => item.path == image.path);
+      _recent.insert(0, image);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pages = <Widget>[
+      _HomeDashboard(
+        recent: _recent,
+        onPick: _pickImage,
+        onOpen: _openEditor,
+        onCamera: () => setState(() => _tab = 2),
+        onBrowse: () => setState(() => _tab = 1),
+      ),
+      _ExplorePage(recent: _recent, onPick: _pickImage, onOpen: _openEditor),
+      _tab == 2 ? const CameraScreen() : const _CameraLanding(),
+      _PhotoEditorScreen(
+        image: _editingImage,
+        onPick: _pickImage,
+        onSaved: _rememberEdited,
+        onAssistant: (controller) => _showAssistant(controller),
+      ),
+      _ProfileWorkspace(onPick: _pickImage, onCamera: () => setState(() => _tab = 2)),
+    ];
+    return Scaffold(
+      backgroundColor: _workspacePaper,
+      body: IndexedStack(index: _tab, children: pages),
+      bottomNavigationBar: _WorkspaceNavigation(
+        selected: _tab,
+        onSelected: (index) {
+          if (index == 3 && _editingImage == null) {
+            _pickImage();
+            return;
+          }
+          setState(() => _tab = index);
+        },
+      ),
+    );
+  }
+
+  Future<void> _showAssistant(_PhotoEditorScreenState controller) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: .58),
+      builder: (sheetContext) => _VoiceAssistantSheet(
+        onAction: (action) {
+          Navigator.of(sheetContext).pop();
+          controller.applyAssistantAction(action);
+        },
+      ),
+    );
+  }
+}
+
+class _WorkspaceNavigation extends StatelessWidget {
+  const _WorkspaceNavigation({required this.selected, required this.onSelected});
+  final int selected;
+  final ValueChanged<int> onSelected;
+
+  static const _items = [
+    (Icons.home_rounded, 'Home'),
+    (Icons.explore_outlined, 'Explore'),
+    (Icons.camera_alt_outlined, 'Camera'),
+    (Icons.tune_rounded, 'Edit'),
+    (Icons.person_outline_rounded, 'Profile'),
+  ];
+
+  @override
+  Widget build(BuildContext context) => Container(
+    decoration: BoxDecoration(
+      color: Colors.white,
+      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .05), blurRadius: 18, offset: const Offset(0, -4))],
+    ),
+    child: SafeArea(
+      top: false,
+      child: SizedBox(
+        height: 66,
+        child: Row(children: List.generate(_items.length, (index) {
+          final item = _items[index];
+          final active = selected == index;
+          return Expanded(child: InkWell(
+            onTap: () => onSelected(index),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: 42, height: 29,
+                decoration: BoxDecoration(
+                  color: active ? _workspaceInk : Colors.transparent,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Icon(item.$1, size: 20, color: active ? Colors.white : const Color(0xFF929292)),
+              ),
+              const SizedBox(height: 4),
+              Text(item.$2, style: TextStyle(fontSize: 10, fontWeight: active ? FontWeight.w800 : FontWeight.w500,
+                color: active ? _workspaceInk : _workspaceMuted)),
+            ]),
+          ));
+        })),
+      ),
+    ),
+  );
+}
+
+class _HomeDashboard extends StatelessWidget {
+  const _HomeDashboard({required this.recent, required this.onPick, required this.onOpen, required this.onCamera, required this.onBrowse});
+  final List<XFile> recent;
+  final Future<void> Function() onPick;
+  final ValueChanged<XFile> onOpen;
+  final VoidCallback onCamera;
+  final VoidCallback onBrowse;
+
+  @override
+  Widget build(BuildContext context) {
+    final albums = [
+      ('All photos', Icons.photo_library_outlined, const [Color(0xFFD9E4D4), Color(0xFF8CA18C)]),
+      ('Portraits', Icons.face_retouching_natural_outlined, const [Color(0xFFF1D5C7), Color(0xFFC28E77)]),
+      ('Travel', Icons.landscape_outlined, const [Color(0xFFD5E6EC), Color(0xFF7799A8)]),
+      ('Favorites', Icons.favorite_border_rounded, const [Color(0xFFE8D8E8), Color(0xFFAD8BA9)]),
+    ];
+    return Scaffold(
+      backgroundColor: _workspacePaper,
+      body: SafeArea(child: CustomScrollView(slivers: [
+        SliverPadding(padding: const EdgeInsets.fromLTRB(22, 12, 22, 0), sliver: SliverToBoxAdapter(child: Row(children: [
+          Container(width: 42, height: 42, decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFFE7E8E2)),
+            child: const Icon(Icons.person_rounded, color: _workspaceInk, size: 24)),
+          const Spacer(),
+          IconButton(onPressed: onPick, tooltip: 'Search photos', icon: const Icon(Icons.search_rounded, color: _workspaceInk)),
+          IconButton(onPressed: onBrowse, tooltip: 'Explore albums', icon: const Icon(Icons.more_horiz_rounded, color: _workspaceInk)),
+        ]))),
+        SliverPadding(padding: const EdgeInsets.fromLTRB(22, 16, 22, 12), sliver: SliverToBoxAdapter(child: Row(children: [
+          const Expanded(child: Text('Albums', style: TextStyle(fontSize: 28, height: 1.1, letterSpacing: -.7, color: _workspaceInk, fontWeight: FontWeight.w900))),
+          TextButton(onPressed: onBrowse, child: const Text('See all', style: TextStyle(color: _workspaceInk, fontWeight: FontWeight.w700))),
+        ]))),
+        SliverToBoxAdapter(child: SizedBox(height: 206, child: ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 22), scrollDirection: Axis.horizontal,
+          itemCount: albums.length, separatorBuilder: (_, __) => const SizedBox(width: 12),
+          itemBuilder: (context, index) {
+            final album = albums[index];
+            final image = recent.isNotEmpty ? recent[index % recent.length] : null;
+            return GestureDetector(
+              onTap: image != null ? () => onOpen(image) : onPick,
+              child: Container(width: 142, decoration: BoxDecoration(borderRadius: BorderRadius.circular(22),
+                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: album.$3)),
+                clipBehavior: Clip.antiAlias,
+                child: Stack(fit: StackFit.expand, children: [
+                  if (image != null) Image.file(File(image.path), fit: BoxFit.cover)
+                  else Center(child: Icon(album.$2, size: 46, color: Colors.white.withValues(alpha: .85))),
+                  DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                    colors: [Colors.transparent, Colors.black.withValues(alpha: .62)]))),
+                  Positioned(left: 13, right: 8, bottom: 14, child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(album.$1, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w800)),
+                    Text(image != null ? '${recent.length} recent photos' : 'Tap to add photos',
+                      style: const TextStyle(color: Colors.white70, fontSize: 10)),
+                  ])),
+                ]),
+              ),
+            );
+          },
+        ))),
+        SliverPadding(padding: const EdgeInsets.fromLTRB(22, 27, 22, 5), sliver: SliverToBoxAdapter(child: Row(children: [
+          const Expanded(child: Text('Recent Editing', style: TextStyle(fontSize: 23, letterSpacing: -.5, color: _workspaceInk, fontWeight: FontWeight.w900))),
+          IconButton(onPressed: onPick, tooltip: 'Add photo', icon: const Icon(Icons.add_circle_outline_rounded, color: _workspaceInk)),
+        ]))),
+        SliverPadding(padding: const EdgeInsets.fromLTRB(22, 0, 22, 12), sliver: const SliverToBoxAdapter(child: Text('Pick up where your creativity left off', style: TextStyle(fontSize: 12, color: _workspaceMuted)))),
+        if (recent.isEmpty)
+          SliverToBoxAdapter(child: Padding(padding: const EdgeInsets.fromLTRB(22, 20, 22, 30), child: InkWell(
+            onTap: onPick,
+            borderRadius: BorderRadius.circular(24),
+            child: Container(height: 185, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: const Color(0xFFE4E4DF))),
+              child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(Icons.add_photo_alternate_outlined, size: 38, color: _workspaceMuted),
+                SizedBox(height: 10),
+                Text('Start with a photo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _workspaceInk)),
+                SizedBox(height: 4),
+                Text('Choose an image to open the editor', style: TextStyle(fontSize: 12, color: _workspaceMuted)),
+              ]),
+            ),
+          )))
+        else
+          SliverPadding(padding: const EdgeInsets.fromLTRB(22, 7, 22, 28), sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 14, childAspectRatio: .78),
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final image = recent[index];
+              return GestureDetector(
+                onTap: () => onOpen(image),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(20), child: SizedBox(width: double.infinity,
+                    child: Image.file(File(image.path), fit: BoxFit.cover))),
+                  ),
+                  const SizedBox(height: 8),
+                  Text('Photo project ${index + 1}', style: const TextStyle(color: _workspaceInk, fontSize: 12, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 2),
+                  const Text('Tap to continue editing', style: TextStyle(color: _workspaceMuted, fontSize: 10)),
+                ]),
+              );
+            }, childCount: recent.length),
+          )),
+      ])),
+    );
+  }
+}
+
+class _ExplorePage extends StatelessWidget {
+  const _ExplorePage({required this.recent, required this.onPick, required this.onOpen});
+  final List<XFile> recent;
+  final Future<void> Function() onPick;
+  final ValueChanged<XFile> onOpen;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: _workspacePaper,
+    appBar: AppBar(backgroundColor: _workspacePaper, foregroundColor: _workspaceInk, title: const Text('Explore photos', style: TextStyle(fontWeight: FontWeight.w900))),
+    body: recent.isEmpty
+      ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(Icons.photo_library_outlined, size: 44, color: _workspaceMuted),
+          const SizedBox(height: 12),
+          const Text('Your photo space starts here', style: TextStyle(color: _workspaceInk, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          FilledButton(onPressed: onPick, child: const Text('Choose photos')),
+        ]))
+      : GridView.builder(
+          padding: const EdgeInsets.all(18),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: .8),
+          itemCount: recent.length + 1,
+          itemBuilder: (context, index) => index == recent.length
+            ? InkWell(onTap: onPick, borderRadius: BorderRadius.circular(18), child: Container(
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE1E1DC))),
+                child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.add_rounded, size: 32), Text('Add photo')]),
+              ))
+            : GestureDetector(onTap: () => onOpen(recent[index]), child: ClipRRect(borderRadius: BorderRadius.circular(18), child: Image.file(File(recent[index].path), fit: BoxFit.cover))),
+        ),
+  );
+}
+
+class _CameraLanding extends StatelessWidget {
+  const _CameraLanding();
+  @override
+  Widget build(BuildContext context) => const Scaffold(backgroundColor: Color(0xFF08090D), body: Center(child: CircularProgressIndicator()));
+}
+
+class _ProfileWorkspace extends StatelessWidget {
+  const _ProfileWorkspace({required this.onPick, required this.onCamera});
+  final Future<void> Function() onPick;
+  final VoidCallback onCamera;
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: _workspacePaper,
+    appBar: AppBar(backgroundColor: _workspacePaper, foregroundColor: _workspaceInk, title: const Text('Your workspace', style: TextStyle(fontWeight: FontWeight.w900))),
+    body: ListView(padding: const EdgeInsets.all(22), children: [
+      Container(padding: const EdgeInsets.all(22), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+        child: const Column(children: [
+          CircleAvatar(radius: 34, backgroundColor: Color(0xFFE8E9E2), child: Icon(Icons.person_rounded, size: 36, color: _workspaceInk)),
+          SizedBox(height: 12), Text('OpenLens creator', style: TextStyle(color: _workspaceInk, fontWeight: FontWeight.w900, fontSize: 18)),
+          SizedBox(height: 4), Text('Your photos stay on your device', style: TextStyle(color: _workspaceMuted, fontSize: 12)),
+        ])),
+      const SizedBox(height: 14),
+      ListTile(leading: const Icon(Icons.add_photo_alternate_outlined), title: const Text('Import a photo'), trailing: const Icon(Icons.chevron_right_rounded), onTap: onPick),
+      ListTile(leading: const Icon(Icons.camera_alt_outlined), title: const Text('Open live camera'), trailing: const Icon(Icons.chevron_right_rounded), onTap: onCamera),
+      const Padding(padding: EdgeInsets.all(12), child: Text('OpenLens Pro · Local photo workspace', style: TextStyle(color: _workspaceMuted, fontSize: 11))),
+    ]),
+  );
+}
+
+class _PhotoEditorScreen extends StatefulWidget {
+  const _PhotoEditorScreen({required this.image, required this.onPick, required this.onSaved, required this.onAssistant});
+  final XFile? image;
+  final Future<void> Function() onPick;
+  final ValueChanged<XFile> onSaved;
+  final Future<void> Function(_PhotoEditorScreenState controller) onAssistant;
+  @override
+  State<_PhotoEditorScreen> createState() => _PhotoEditorScreenState();
+}
+
+class _PhotoEditorScreenState extends State<_PhotoEditorScreen> {
+  String _tool = 'Adjust';
+  double _adjustment = 0;
+  double _contrast = 1;
+  int _rotation = 0;
+  bool _frame = false;
+  bool _saving = false;
+
+  List<double> get _matrix {
+    final contrast = _contrast;
+    final offset = _adjustment * 255 + (1 - contrast) * 128;
+    return [contrast,0,0,0,offset, 0,contrast,0,0,offset, 0,0,contrast,0,offset, 0,0,0,1,0];
+  }
+
+  void applyAssistantAction(String action) {
+    setState(() {
+      switch (action) {
+        case 'Next Adjustment':
+          _tool = 'Adjust';
+          _adjustment = (_adjustment + .08).clamp(-.35, .35);
+          break;
+        case 'Edit Stroke Reference':
+          _tool = 'Frame';
+          _frame = !_frame;
+          break;
+        case 'Warm Film Look':
+          _tool = 'Filter';
+          _adjustment = .06;
+          _contrast = 1.12;
+          break;
+        default:
+          _adjustment = 0;
+          _contrast = 1;
+          _rotation = 0;
+          _frame = false;
+      }
+    });
+  }
+
+  Future<void> _save() async {
+    final image = widget.image;
+    if (image == null || _saving) return;
+    setState(() => _saving = true);
+    try {
+      final decoded = img.decodeImage(await File(image.path).readAsBytes());
+      if (decoded == null) throw const FormatException('Image could not be decoded');
+      final contrast = _contrast;
+      final brightness = _adjustment * 255;
+      for (final px in decoded) {
+        px.r = ((px.r.toDouble() - 128) * contrast + 128 + brightness).clamp(0, 255).round();
+        px.g = ((px.g.toDouble() - 128) * contrast + 128 + brightness).clamp(0, 255).round();
+        px.b = ((px.b.toDouble() - 128) * contrast + 128 + brightness).clamp(0, 255).round();
+      }
+      var output = decoded;
+      if (_rotation != 0) output = img.copyRotate(output, angle: _rotation * 90);
+      final outPath = '${image.path}.openlens-edit-${DateTime.now().millisecondsSinceEpoch}.jpg';
+      await File(outPath).writeAsBytes(img.encodeJpg(output, quality: 94), flush: true);
+      await Gal.putImage(outPath, album: 'OpenLens Pro Edited');
+      final edited = XFile(outPath);
+      widget.onSaved(edited);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Edited copy saved to your gallery. Original kept unchanged.')));
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not save this edit. Try another image.')));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final image = widget.image;
+    return Scaffold(
+      backgroundColor: _workspacePaper,
+      appBar: AppBar(
+        backgroundColor: _workspacePaper, foregroundColor: _workspaceInk, elevation: 0,
+        leadingWidth: 104,
+        leading: Row(children: [
+          IconButton(tooltip: 'Undo', onPressed: () => setState(() { _adjustment = 0; _contrast = 1; _rotation = 0; }), icon: const Icon(Icons.undo_rounded)),
+          IconButton(tooltip: 'Redo', onPressed: () => setState(() { _adjustment = .05; _contrast = 1.05; }), icon: const Icon(Icons.redo_rounded)),
+        ]),
+        title: const Text('Edit photo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+        centerTitle: true,
+        actions: [TextButton(onPressed: _saving ? null : _save, child: _saving ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Save', style: TextStyle(color: _workspaceInk, fontWeight: FontWeight.w900))), const SizedBox(width: 8)],
+      ),
+      body: Column(children: [
+        Expanded(flex: 6, child: Center(
+          child: AspectRatio(aspectRatio: 1, child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 18),
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(color: const Color(0xFFE8E8E3), borderRadius: BorderRadius.circular(_frame ? 0 : 6),
+              border: _frame ? Border.all(color: _workspaceInk, width: 9) : null),
+            child: image == null
+              ? InkWell(onTap: widget.onPick, child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Icon(Icons.add_photo_alternate_outlined, size: 42, color: _workspaceMuted),
+                  SizedBox(height: 10), Text('Choose a photo', style: TextStyle(color: _workspaceInk, fontWeight: FontWeight.w800)),
+                ]))
+              : Stack(fit: StackFit.expand, children: [
+                  Transform.rotate(angle: _rotation * 3.141592653589793 / 2,
+                    child: ColorFiltered(colorFilter: ColorFilter.matrix(_matrix), child: Image.file(File(image.path), fit: BoxFit.cover))),
+                  IgnorePointer(child: CustomPaint(painter: _CropCornerPainter())),
+                ]),
+          )),
+        )),
+        const SizedBox(height: 12),
+        SizedBox(height: 78, child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 18), children: [
+          _EditToolButton(label: 'Frame', icon: Icons.crop_free_rounded, active: _tool == 'Frame', onTap: () => setState(() { _tool = 'Frame'; _frame = !_frame; })),
+          _EditToolButton(label: 'Rotate', icon: Icons.rotate_right_rounded, active: _tool == 'Rotate', onTap: () => setState(() { _tool = 'Rotate'; _rotation = (_rotation + 1) % 4; })),
+          _EditToolButton(label: 'Adjust', icon: Icons.tune_rounded, active: _tool == 'Adjust', onTap: () => setState(() => _tool = 'Adjust')),
+          _EditToolButton(label: 'Contrast', icon: Icons.contrast_rounded, active: _tool == 'Contrast', onTap: () => setState(() => _tool = 'Contrast')),
+          _EditToolButton(label: 'Filter', icon: Icons.auto_awesome_rounded, active: _tool == 'Filter', onTap: () => setState(() { _tool = 'Filter'; _adjustment = .05; _contrast = 1.08; })),
+          _EditToolButton(label: 'Assistant', icon: Icons.mic_none_rounded, active: false, onTap: () => widget.onAssistant(this)),
+        ])),
+        Padding(padding: const EdgeInsets.fromLTRB(24, 8, 24, 12), child: Column(children: [
+          Row(children: [
+            Text(_tool == 'Contrast' ? 'Contrast' : _tool == 'Rotate' ? 'Rotation' : _tool == 'Frame' ? 'Frame' : 'Intensity',
+              style: const TextStyle(color: _workspaceInk, fontWeight: FontWeight.w800, fontSize: 12)),
+            const Spacer(),
+            Text(_tool == 'Contrast' ? _contrast.toStringAsFixed(2) : _tool == 'Rotate' ? '${_rotation * 90}°' : _adjustment.toStringAsFixed(2),
+              style: const TextStyle(color: _workspaceMuted, fontWeight: FontWeight.w700, fontSize: 12)),
+          ]),
+          Slider(
+            value: _tool == 'Contrast' ? _contrast.clamp(.5, 1.8) : _adjustment.clamp(-.35, .35),
+            min: _tool == 'Contrast' ? .5 : -.35,
+            max: _tool == 'Contrast' ? 1.8 : .35,
+            onChanged: (value) => setState(() {
+              if (_tool == 'Contrast') { _contrast = value; } else { _adjustment = value; }
+            }),
+            activeColor: _workspaceInk, inactiveColor: const Color(0xFFD7D7D2),
+          ),
+          SizedBox(height: 18, child: CustomPaint(size: Size.infinite, painter: _RulerPainter())),
+        ])),
+        Padding(padding: const EdgeInsets.fromLTRB(18, 4, 18, 12), child: Row(children: [
+          _BottomEditAction(icon: Icons.crop_rounded, label: 'Crop', onTap: () => setState(() { _tool = 'Frame'; _frame = !_frame; })),
+          _BottomEditAction(icon: Icons.rotate_90_degrees_ccw_rounded, label: 'Rotate', onTap: () => setState(() { _tool = 'Rotate'; _rotation = (_rotation + 1) % 4; })),
+          Expanded(child: Center(child: InkWell(
+            onTap: () => widget.onAssistant(this),
+            borderRadius: BorderRadius.circular(40),
+            child: Container(width: 58, height: 58, decoration: const BoxDecoration(color: _workspaceInk, shape: BoxShape.circle),
+              child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 25)),
+          ))),
+          _BottomEditAction(icon: Icons.tune_rounded, label: 'Adjust', onTap: () => setState(() => _tool = 'Adjust')),
+          _BottomEditAction(icon: Icons.check_circle_outline_rounded, label: 'Done', onTap: _save),
+        ])),
+      ]),
+    );
+  }
+}
+
+class _EditToolButton extends StatelessWidget {
+  const _EditToolButton({required this.label, required this.icon, required this.active, required this.onTap});
+  final String label;
+  final IconData icon;
+  final bool active;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Padding(padding: const EdgeInsets.only(right: 18), child: InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(16),
+    child: SizedBox(width: 55, child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      Container(width: 40, height: 40, decoration: BoxDecoration(color: active ? _workspaceInk : Colors.transparent, shape: BoxShape.circle),
+        child: Icon(icon, size: 20, color: active ? Colors.white : _workspaceMuted)),
+      const SizedBox(height: 5),
+      Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10, fontWeight: active ? FontWeight.w800 : FontWeight.w500, color: active ? _workspaceInk : _workspaceMuted)),
+    ])),
+  ));
+}
+
+class _BottomEditAction extends StatelessWidget {
+  const _BottomEditAction({required this.icon, required this.label, required this.onTap});
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Expanded(child: InkWell(onTap: onTap, child: Column(mainAxisSize: MainAxisSize.min, children: [
+    Icon(icon, color: _workspaceInk, size: 21),
+    const SizedBox(height: 5),
+    Text(label, style: const TextStyle(fontSize: 9, color: _workspaceMuted, fontWeight: FontWeight.w700)),
+  ])));
+}
+
+class _CropCornerPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()..color = Colors.white..strokeWidth = 3.2..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
+    const len = 20.0, inset = 12.0;
+    for (final x in [inset, size.width - inset]) {
+      for (final y in [inset, size.height - inset]) {
+        final dx = x == inset ? 1.0 : -1.0, dy = y == inset ? 1.0 : -1.0;
+        canvas.drawLine(Offset(x, y), Offset(x + dx * len, y), p);
+        canvas.drawLine(Offset(x, y), Offset(x, y + dy * len), p);
+      }
+    }
+  }
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _RulerPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final line = Paint()..color = const Color(0xFFD4D4CF)..strokeWidth = 1;
+    final center = size.width / 2;
+    canvas.drawLine(Offset(0, size.height / 2), Offset(size.width, size.height / 2), line);
+    for (var i = 0; i <= 40; i++) {
+      final x = size.width * i / 40;
+      final major = i % 5 == 0;
+      canvas.drawLine(Offset(x, size.height / 2 - (major ? 7 : 3)), Offset(x, size.height / 2 + (major ? 7 : 3)), line);
+    }
+    final marker = Paint()..color = _workspaceInk..strokeWidth = 2.2;
+    canvas.drawLine(Offset(center, 0), Offset(center, size.height), marker);
+    canvas.drawCircle(Offset(center, size.height / 2), 3.5, Paint()..color = _workspaceAccent);
+  }
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _VoiceAssistantSheet extends StatefulWidget {
+  const _VoiceAssistantSheet({required this.onAction});
+  final ValueChanged<String> onAction;
+  @override
+  State<_VoiceAssistantSheet> createState() => _VoiceAssistantSheetState();
+}
+
+class _VoiceAssistantSheetState extends State<_VoiceAssistantSheet> {
+  bool _listening = false;
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    top: false,
+    child: Container(
+      height: MediaQuery.of(context).size.height * .58,
+      padding: const EdgeInsets.fromLTRB(22, 12, 22, 24),
+      decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
+      child: Column(children: [
+        Container(width: 42, height: 4, decoration: BoxDecoration(color: const Color(0xFFE1E1E1), borderRadius: BorderRadius.circular(5))),
+        const SizedBox(height: 22),
+        InkWell(
+          onTap: () => setState(() => _listening = !_listening),
+          borderRadius: BorderRadius.circular(40),
+          child: AnimatedContainer(duration: const Duration(milliseconds: 180), width: 68, height: 68,
+            decoration: BoxDecoration(color: _workspaceInk, shape: BoxShape.circle, border: _listening ? Border.all(color: _workspaceAccent, width: 4) : null),
+            child: Icon(_listening ? Icons.graphic_eq_rounded : Icons.mic_rounded, color: Colors.white, size: 29)),
+        ),
+        const SizedBox(height: 16),
+        const Text('Hi, Cent!', style: TextStyle(color: _workspaceInk, fontSize: 28, letterSpacing: -.7, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 6),
+        Text(_listening ? 'Voice capture is not connected yet. Try a quick action below.' : 'What would you like to change in your photo?',
+          textAlign: TextAlign.center, style: const TextStyle(color: _workspaceMuted, fontSize: 12)),
+        const SizedBox(height: 20),
+        _AssistantAction(label: 'Edit Stroke Reference', icon: Icons.crop_free_rounded, onTap: () => widget.onAction('Edit Stroke Reference')),
+        const SizedBox(height: 9),
+        _AssistantAction(label: 'Next Adjustment', icon: Icons.tune_rounded, onTap: () => widget.onAction('Next Adjustment')),
+        const SizedBox(height: 9),
+        _AssistantAction(label: 'Try a Warm Film Look', icon: Icons.wb_sunny_outlined, onTap: () => widget.onAction('Warm Film Look')),
+        const SizedBox(height: 9),
+        _AssistantAction(label: 'Reset all adjustments', icon: Icons.restart_alt_rounded, onTap: () => widget.onAction('Reset')),
+        const Spacer(),
+        const Text('Quick actions work offline. Speech recognition is not connected.', textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 10, color: _workspaceMuted)),
+      ]),
+    ),
+  );
+}
+
+class _AssistantAction extends StatelessWidget {
+  const _AssistantAction({required this.label, required this.icon, required this.onTap});
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => SizedBox(width: double.infinity, height: 43, child: OutlinedButton(
+    onPressed: onTap,
+    style: OutlinedButton.styleFrom(foregroundColor: _workspaceInk, side: const BorderSide(color: Color(0xFFE0E0E0)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)), alignment: Alignment.centerLeft, padding: const EdgeInsets.symmetric(horizontal: 14)),
+    child: Row(children: [Icon(icon, size: 18), const SizedBox(width: 11), Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)), const Spacer(), const Icon(Icons.chevron_right_rounded, size: 18)]),
+  ));
 }
