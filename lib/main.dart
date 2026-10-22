@@ -1284,6 +1284,7 @@ class __CameraScreenState extends State<_CameraScreen> {
       ],
     ),
   );
+  }
 
   Widget _retroTopButton(IconData icon, VoidCallback onTap) => IconButton(
     onPressed: onTap, icon: Icon(icon, color: Colors.white, size: 23),
