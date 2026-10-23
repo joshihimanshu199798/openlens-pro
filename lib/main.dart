@@ -2083,6 +2083,27 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
     return [tone(0.96, 0.56, 0.35), tone(0.27, 0.60, 0.42), tone(0.33, 0.48, 0.82)];
   }
 
+
+  // Render every look over the same real photographic sample, with a distinct
+  // color grade so people can judge the effect before applying it.
+  ColorFilter _previewPhotoFilter(_SignaturePreset preset) {
+    final s = preset.saturation.clamp(0.0, 1.6);
+    final c = preset.contrast.clamp(0.5, 1.6);
+    final b = preset.brightness;
+    final warm = preset.warmth * 0.12;
+    final tint = preset.tint * 0.10;
+    final inv = 1.0 - s;
+    final r = 0.213 * inv;
+    final g = 0.715 * inv;
+    final bl = 0.072 * inv;
+    return ColorFilter.matrix(<double>[
+      (r + s) * c, g * c, bl * c, 0, (b + warm) * 255,
+      r * c, (g + s) * c, bl * c, 0, (b + tint) * 255,
+      r * c, g * c, (bl + s) * c, 0, (b - warm * 0.55) * 255,
+      0, 0, 0, 1, 0,
+    ]);
+  }
+
   Widget _lookCard(_SignaturePreset preset) {
     final selected = preset.name == widget.activePreset;
     final favorite = _favorites.contains(preset.name);
@@ -2105,7 +2126,19 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
             ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(19)),
               child: SizedBox(height: 94, child: Stack(fit: StackFit.expand, children: [
-                CustomPaint(painter: _LookSamplePainter(colors), child: const SizedBox.expand()),
+                ColorFiltered(
+                  colorFilter: _previewPhotoFilter(preset),
+                  child: Image.network(
+                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=900&q=85',
+                    fit: BoxFit.cover,
+                    alignment: Alignment.topCenter,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      color: const Color(0xFF202428),
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.image_not_supported_outlined, color: Colors.white54, size: 28),
+                    ),
+                  ),
+                ),
                 Positioned(left: 10, right: 10, bottom: 10, child: Container(
                   height: 29,
                   decoration: BoxDecoration(color: Colors.black.withValues(alpha: .25), borderRadius: BorderRadius.circular(9), border: Border.all(color: Colors.white.withValues(alpha: .15))),
