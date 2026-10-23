@@ -63,7 +63,7 @@ class __CameraScreenState extends State<_CameraScreen> {
   bool _levelerEnabled = true;
   String? _lastPhotoPath;
   String _aspectRatioLabel = '4:3';
-  static const List<String> _aspectOptions = ['4:3', '16:9', '1:1', 'Full'];
+  static const List<String> _aspectOptions = ['4:3', '3:2', '16:9', '1:1', 'Full'];
   bool _showRetroTuning = false;
   bool _timestampOverlay = false;
   double _grainIntensity = 0.22;
@@ -412,6 +412,27 @@ class __CameraScreenState extends State<_CameraScreen> {
         ),
       )));
     } catch (_) { _showMessage('Could not open the gallery. Check photo access and try again.'); }
+  }
+
+  Color _videoLookTint(String name) {
+    switch (name.toLowerCase()) {
+      case 'vhs': return const Color(0x243A6878);
+      case '8mm': return const Color(0x24F2A64A);
+      case 'camcorder': return const Color(0x242A68A8);
+      case 'faded film': return const Color(0x20E8D8B0);
+      case 'analog memories': return const Color(0x22B57B42);
+      case 'sepia journal': return const Color(0x2C986B3D);
+      case 'silver gelatin':
+      case 'classic mono':
+      case 'noir contrast':
+      case 'monochrome portrait': return const Color(0x18000000);
+      case 'neon bazaar': return const Color(0x203A16A8);
+      case 'monsoon chrome': return const Color(0x20216D9A);
+      case 'gold 200':
+      case 'golden hour':
+      case 'warm print': return const Color(0x18F0A24A);
+      default: return Colors.transparent;
+    }
   }
 
   List<double> get _gradeMatrix {
@@ -906,14 +927,14 @@ class __CameraScreenState extends State<_CameraScreen> {
                                   child: _aspectRatioLabel == 'Full'
                                     ? AspectRatio(aspectRatio: camera.value.aspectRatio, child: CameraPreview(camera))
                                     : AspectRatio(
-                                        aspectRatio: _aspectRatioLabel == '16:9' ? 16 / 9 : _aspectRatioLabel == '1:1' ? 1 : 4 / 3,
+                                        aspectRatio: switch (_aspectRatioLabel) { '16:9' => 16 / 9, '3:2' => 3 / 2, '1:1' => 1, _ => 4 / 3 },
                                         child: ClipRect(
-                                          child: FittedBox(
-                                            fit: BoxFit.cover,
-                                            child: SizedBox(
-                                              // Use native sensor geometry; the outer FittedBox crops to the selected ratio.
-                                              width: 1000,
-                                              height: 1000 / camera.value.aspectRatio,
+                                          child: OverflowBox(
+                                            alignment: Alignment.center,
+                                            minWidth: 0, minHeight: 0,
+                                            maxWidth: double.infinity, maxHeight: double.infinity,
+                                            child: AspectRatio(
+                                              aspectRatio: camera.value.aspectRatio,
                                               child: CameraPreview(camera),
                                             ),
                                           ),
@@ -927,8 +948,11 @@ class __CameraScreenState extends State<_CameraScreen> {
                 else
                   Positioned.fill(child: _cameraPlaceholder()),
                 if (_mode == 'VIDEO') ...[
-                  Positioned.fill(child: IgnorePointer(child: CustomPaint(
-                    painter: _RetroTexturePainter(grain: _grainIntensity, bleed: _colorBleed, tracking: _trackingDistortion, preset: _activePreset),
+                  Positioned.fill(child: IgnorePointer(child: DecoratedBox(
+                    decoration: BoxDecoration(color: _videoLookTint(_activePreset)),
+                    child: CustomPaint(
+                      painter: _RetroTexturePainter(grain: _grainIntensity, bleed: _colorBleed, tracking: _trackingDistortion, preset: _activePreset),
+                    ),
                   ))),
                   if (_timestampOverlay)
                     Positioned(left: 20, bottom: 270, child: IgnorePointer(child: Text(
@@ -1138,11 +1162,19 @@ class __CameraScreenState extends State<_CameraScreen> {
                       decoration: BoxDecoration(color: selected ? Colors.white.withValues(alpha: .14) : Colors.transparent,
                         borderRadius: BorderRadius.circular(17), border: Border.all(color: selected ? Colors.white : Colors.white24, width: selected ? 2 : 1)),
                       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Container(width: 28, height: 28, decoration: BoxDecoration(shape: BoxShape.circle,
-                          gradient: LinearGradient(colors: [
-                            Color.lerp(const Color(0xFF8099B8), const Color(0xFFFFB45A), ((preset.warmth + 1) / 2).clamp(0.0, 1.0))!,
-                            Color.lerp(const Color(0xFF555B70), const Color(0xFFDD7196), ((preset.saturation - 0.5) / 1.5).clamp(0.0, 1.0))!,
-                          ])), child: Icon(name == 'VHS' ? Icons.videocam_rounded : name == '8mm' ? Icons.movie_filter_rounded : name == 'Camcorder' ? Icons.video_camera_back_rounded : Icons.circle_outlined, color: Colors.white, size: 15)),
+                        ClipRRect(
+                           borderRadius: BorderRadius.circular(7),
+                           child: SizedBox(
+                             width: 42, height: 30,
+                             child: (_lastPhotoPath != null && File(_lastPhotoPath!).existsSync())
+                               ? ColorFiltered(
+                                   colorFilter: ColorFilter.matrix(_thumbnailMatrix(preset)),
+                                   child: Image.file(File(_lastPhotoPath!), fit: BoxFit.cover,
+                                     errorBuilder: (_, __, ___) => CustomPaint(painter: _LookSamplePainter(_previewColors(preset)))),
+                                 )
+                               : CustomPaint(painter: _LookSamplePainter(_previewColors(preset))),
+                           ),
+                         ),
                         const SizedBox(height: 3),
                         Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w700)),
                       ]),
@@ -1919,7 +1951,7 @@ class _RetroTexturePainter extends CustomPainter {
     }
   }
   @override
-  bool shouldRepaint(covariant _RetroTexturePainter old) => old.grain != grain || old.bleed != bleed || old.tracking != tracking;
+  bool shouldRepaint(covariant _RetroTexturePainter old) => old.grain != grain || old.bleed != bleed || old.tracking != tracking || old.preset != preset;
 }
 
 class _LookSamplePainter extends CustomPainter {
@@ -2698,10 +2730,18 @@ class _PhotoEditorScreenState extends State<_PhotoEditorScreen> {
           IconButton(tooltip: 'Open camera', onPressed: widget.onCamera, icon: const Icon(Icons.camera_alt_rounded)),
           PopupMenuButton<String>(
             tooltip: 'More options',
-            onSelected: (value) { if (value == 'camera') widget.onCamera(); if (value == 'gallery') widget.onPick(); },
+            icon: const Icon(Icons.more_vert_rounded),
+            onSelected: (value) {
+              if (value == 'camera') widget.onCamera();
+              if (value == 'gallery') widget.onPick();
+            },
             itemBuilder: (_) => const [
-              PopupMenuItem(value: 'camera', child: ListTile(leading: Icon(Icons.camera_alt_rounded), title: Text('Open camera'))),
-              PopupMenuItem(value: 'gallery', child: ListTile(leading: Icon(Icons.photo_library_outlined), title: Text('Choose photo'))),
+              PopupMenuItem(value: 'camera', child: Row(children: [
+                Icon(Icons.camera_alt_rounded), SizedBox(width: 12), Text('Open camera'),
+              ])),
+              PopupMenuItem(value: 'gallery', child: Row(children: [
+                Icon(Icons.photo_library_outlined), SizedBox(width: 12), Text('Choose photo'),
+              ])),
             ],
           ),
           TextButton(onPressed: _saving ? null : _save, child: _saving ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Save', style: TextStyle(color: _workspaceInk, fontWeight: FontWeight.w900))),
