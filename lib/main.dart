@@ -891,7 +891,7 @@ class __CameraScreenState extends State<_CameraScreen> {
                               ? CameraPreview(camera)
                               : Center(
                                   child: AspectRatio(
-                                    aspectRatio: camera.value.aspectRatio,
+                                    aspectRatio: _wideAspect ? 16 / 9 : 4 / 3,
                                     child: CameraPreview(camera),
                                   ),
                                 ),
