@@ -992,7 +992,7 @@ class __CameraScreenState extends State<_CameraScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       _retroTopButton(_flash == FlashMode.off ? Icons.flash_off_rounded : Icons.flash_on_rounded, _toggleFlash),
-                      _retroTopButton(_wideAspect ? Icons.crop_16_9_rounded : Icons.crop_3_2_rounded, () => setState(() => _wideAspect = !_wideAspect)),
+                      _retroTopButton(_aspectRatioLabel == '16:9' ? Icons.crop_16_9_rounded : Icons.crop_3_2_rounded, () => setState(() => _aspectRatioLabel = _aspectRatioLabel == '16:9' ? '3:2' : '16:9')),
                       _retroTopButton(Icons.cameraswitch_rounded, _switchCamera),
                     ],
                   ))),
