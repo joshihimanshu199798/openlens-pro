@@ -911,8 +911,9 @@ class __CameraScreenState extends State<_CameraScreen> {
                                           child: FittedBox(
                                             fit: BoxFit.cover,
                                             child: SizedBox(
-                                              width: previewSize.height,
-                                              height: previewSize.width,
+                                              // Use native sensor geometry; the outer FittedBox crops to the selected ratio.
+                                              width: 1000,
+                                              height: 1000 / camera.value.aspectRatio,
                                               child: CameraPreview(camera),
                                             ),
                                           ),
@@ -1007,7 +1008,29 @@ class __CameraScreenState extends State<_CameraScreen> {
       _minimalTopAction(tooltip: 'Flash: ${_flash.name}', icon: _flash == FlashMode.off ? Icons.flash_off_rounded : Icons.flash_on_rounded, onPressed: _toggleFlash),
       _minimalTopAction(tooltip: 'Timer: ${_selfTimerSeconds}s', icon: Icons.timer_outlined, onPressed: () => setState(() => _selfTimerSeconds = _selfTimerSeconds == 0 ? 3 : _selfTimerSeconds == 3 ? 10 : 0), active: _selfTimerSeconds > 0),
       _minimalTopAction(tooltip: _hdrEnabled ? 'HDR on' : 'HDR off', icon: Icons.hdr_on_rounded, onPressed: () => setState(() => _hdrEnabled = !_hdrEnabled), active: _hdrEnabled),
-      _minimalTopAction(tooltip: _wideAspect ? 'Aspect ratio 16:9' : 'Aspect ratio 4:3', icon: _wideAspect ? Icons.crop_16_9_rounded : Icons.crop_3_2_rounded, onPressed: () => setState(() => _wideAspect = !_wideAspect), active: _wideAspect),
+      _minimalTopAction(
+        tooltip: 'Aspect ratio: $_aspectRatioLabel',
+        icon: _aspectRatioLabel == '16:9' ? Icons.crop_16_9_rounded : _aspectRatioLabel == '1:1' ? Icons.crop_square_rounded : Icons.crop_3_2_rounded,
+        onPressed: () => showModalBottomSheet<void>(
+          context: context,
+          backgroundColor: const Color(0xFF15191D),
+          builder: (sheetContext) => SafeArea(child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('ASPECT RATIO', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1.3)),
+              const SizedBox(height: 12),
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                for (final ratio in _aspectOptions)
+                  ChoiceChip(label: Text(ratio), selected: ratio == _aspectRatioLabel,
+                    onSelected: (_) { setState(() => _aspectRatioLabel = ratio); Navigator.of(sheetContext).pop(); },
+                    selectedColor: const Color(0xFFC5FF72), backgroundColor: const Color(0xFF252B30),
+                    labelStyle: TextStyle(color: ratio == _aspectRatioLabel ? Colors.black : Colors.white, fontWeight: FontWeight.w800)),
+              ]),
+            ]),
+          )),
+        ),
+        active: _aspectRatioLabel != '4:3',
+      ),
       _minimalTopAction(tooltip: 'Leveler and grid', icon: _levelerEnabled ? Icons.straighten_rounded : Icons.grid_off_rounded, onPressed: () => setState(() { _levelerEnabled = !_levelerEnabled; _grid = _levelerEnabled; }), active: _levelerEnabled),
     ],
   );
