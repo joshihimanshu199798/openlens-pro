@@ -890,8 +890,10 @@ class __CameraScreenState extends State<_CameraScreen> {
                           child: previewSize == null
                               ? CameraPreview(camera)
                               : Center(
+                                  // Preserve the camera sensor's real preview ratio.
+                                  // Aspect selection is a crop guide, never a stretched preview.
                                   child: AspectRatio(
-                                    aspectRatio: _wideAspect ? 16 / 9 : 4 / 3,
+                                    aspectRatio: camera.value.aspectRatio,
                                     child: CameraPreview(camera),
                                   ),
                                 ),
