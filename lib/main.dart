@@ -1037,6 +1037,28 @@ class __CameraScreenState extends State<_CameraScreen> {
     ),
   );
 
+  bool get _isVideoMode => _mode == 'VIDEO';
+
+  Widget _modeChoice(String label, IconData icon, bool active, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 9),
+        decoration: BoxDecoration(
+          color: active ? const Color(0xFFC5FF72) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 16, color: active ? const Color(0xFF15180F) : Colors.white70),
+          const SizedBox(width: 6),
+          Text(label, style: TextStyle(fontSize: 11, letterSpacing: 1, fontWeight: FontWeight.w800,
+            color: active ? const Color(0xFF15180F) : Colors.white70)),
+        ]),
+      ),
+    );
+  }
+
   Widget _bottomControls({required bool compact}) {
     if (_mode == 'VIDEO') {
       return Padding(
@@ -1080,15 +1102,15 @@ class __CameraScreenState extends State<_CameraScreen> {
             ]),
           ),
           const SizedBox(height: 10),
-          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            TextButton.icon(onPressed: _recording ? null : () => setState(() => _mode = 'PHOTO'),
-              icon: const Icon(Icons.photo_camera_outlined, size: 17), label: const Text('PHOTO'),
-              style: TextButton.styleFrom(foregroundColor: Colors.white70)),
-            const SizedBox(width: 16),
-            const Icon(Icons.videocam_rounded, color: Color(0xFFC5FF72), size: 18),
-            const SizedBox(width: 5),
-            const Text('VIDEO', style: TextStyle(color: Color(0xFFC5FF72), fontWeight: FontWeight.bold)),
-          ]),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: .08), borderRadius: BorderRadius.circular(24), border: Border.all(color: Colors.white24)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              _modeChoice('PHOTO', Icons.photo_camera_outlined, !_isVideoMode, () { if (!_recording) setState(() => _mode = 'PHOTO'); }),
+              const SizedBox(width: 4),
+              _modeChoice('VIDEO', Icons.videocam_rounded, _isVideoMode, () { if (!_recording) setState(() => _mode = 'VIDEO'); }),
+            ]),
+          ),
           const SizedBox(height: 10),
           Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
             _roundAction(tooltip: 'Open gallery', icon: Icons.photo_outlined, onTap: _openGalleryPreview),
