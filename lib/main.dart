@@ -2107,7 +2107,6 @@ class _PresetLibraryPageState extends State<_PresetLibraryPage> {
   Widget _lookCard(_SignaturePreset preset) {
     final selected = preset.name == widget.activePreset;
     final favorite = _favorites.contains(preset.name);
-    final colors = _swatchColors(preset);
     return Material(
       color: selected ? const Color(0xFF202B19) : const Color(0xFF14191D),
       borderRadius: BorderRadius.circular(20),
