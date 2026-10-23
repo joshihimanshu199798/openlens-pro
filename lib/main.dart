@@ -2288,8 +2288,9 @@ class _VideoLookPickerPageState extends State<_VideoLookPickerPage> {
           style: TextStyle(color: Color(0xFF777777), fontSize: 13))),
         Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: TextField(
           onChanged: (v) => setState(() => _search = v),
+          style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(hintText: 'Search retro filters', prefixIcon: const Icon(Icons.search_rounded),
-            filled: true, fillColor: const Color(0xFF171B20), hintStyle: const TextStyle(color: Color(0xFF9AA1AA)), prefixIconColor: const Color(0xFFB8F36B), style: const TextStyle(color: Colors.white), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF343A42)))),
+            filled: true, fillColor: const Color(0xFF171B20), hintStyle: const TextStyle(color: Color(0xFF9AA1AA)), prefixIconColor: const Color(0xFFB8F36B), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF343A42)))),
         )),
         const SizedBox(height: 10),
         SizedBox(height: 42, child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 16),
