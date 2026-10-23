@@ -1050,7 +1050,13 @@ class __CameraScreenState extends State<_CameraScreen> {
               for (final name in ['Standard', 'VHS', '8mm', 'Camcorder', ..._quickLookNames])
                 Builder(builder: (context) {
                   final candidates = _allPresets.where((p) => p.name == name);
-                  final preset = candidates.isNotEmpty ? candidates.first : _allPresets.firstWhere((p) => p.name == 'Auto', orElse: () => _allPresets.first);
+                  // Dedicated recipes: never silently map distinct video looks to Auto.
+                  final preset = candidates.isNotEmpty ? candidates.first : switch (name) {
+                    'VHS' => const _SignaturePreset('VHS', 'Analog tape', Icons.videocam_rounded, -.04, 1, FlashMode.off, category: 'Video', brightness: -.02, contrast: 1.28, saturation: .78, warmth: -.12, tint: -.04),
+                    '8mm' => const _SignaturePreset('8mm', 'Warm grainy film', Icons.movie_filter_rounded, .02, 1, FlashMode.off, category: 'Video', brightness: .04, contrast: 1.18, saturation: .72, warmth: .32, tint: .06),
+                    'Camcorder' => const _SignaturePreset('Camcorder', 'Home video', Icons.video_camera_back_rounded, .01, 1, FlashMode.off, category: 'Video', brightness: .02, contrast: 1.12, saturation: 1.12, warmth: -.08, tint: -.02),
+                    _ => _allPresets.firstWhere((p) => p.name == 'Auto', orElse: () => _allPresets.first),
+                  };
                   final selected = name == 'Standard' ? _activePreset == 'Auto' : _activePreset == preset.name || _activePreset == name;
                   return GestureDetector(
                     onTap: () => name == 'Standard' ? _applyPreset(_allPresets.firstWhere((p) => p.name == 'Auto', orElse: () => _allPresets.first)) : _applyPreset(preset),
