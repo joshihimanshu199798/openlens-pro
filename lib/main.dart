@@ -62,7 +62,8 @@ class __CameraScreenState extends State<_CameraScreen> {
   bool _hdrEnabled = false;
   bool _levelerEnabled = true;
   String? _lastPhotoPath;
-  bool _wideAspect = false;
+  String _aspectRatioLabel = '4:3';
+  static const List<String> _aspectOptions = ['4:3', '16:9', '1:1', 'Full'];
   bool _showRetroTuning = false;
   bool _timestampOverlay = false;
   double _grainIntensity = 0.22;
@@ -890,12 +891,21 @@ class __CameraScreenState extends State<_CameraScreen> {
                           child: previewSize == null
                               ? CameraPreview(camera)
                               : Center(
-                                  // Preserve the camera sensor's real preview ratio.
-                                  // Aspect selection is a crop guide, never a stretched preview.
-                                  child: AspectRatio(
-                                    aspectRatio: camera.value.aspectRatio,
-                                    child: CameraPreview(camera),
-                                  ),
+                                  child: _aspectRatioLabel == 'Full'
+                                    ? AspectRatio(aspectRatio: camera.value.aspectRatio, child: CameraPreview(camera))
+                                    : AspectRatio(
+                                        aspectRatio: _aspectRatioLabel == '16:9' ? 16 / 9 : _aspectRatioLabel == '1:1' ? 1 : 4 / 3,
+                                        child: ClipRect(
+                                          child: FittedBox(
+                                            fit: BoxFit.cover,
+                                            child: SizedBox(
+                                              width: previewSize.height,
+                                              height: previewSize.width,
+                                              child: CameraPreview(camera),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
                                 ),
                         ),
                       ),
@@ -2219,8 +2229,8 @@ class _OpenLensShellState extends State<OpenLensShell> {
       backgroundColor: _workspacePaper,
       body: IndexedStack(index: _tab, children: pages),
       bottomNavigationBar: _WorkspaceNavigation(
-        selected: _tab == 0 ? 0 : _tab == 2 ? 1 : _tab == 3 ? 2 : -1,
-        onSelected: (index) => setState(() => _tab = index == 0 ? 0 : index == 1 ? 2 : 3),
+        selected: _tab == 0 ? 0 : _tab == 1 ? 1 : _tab == 2 ? 2 : 3,
+        onSelected: (index) => setState(() => _tab = index),
       ),
     );
   }
@@ -2333,6 +2343,7 @@ class _WorkspaceNavigation extends StatelessWidget {
 
   static const _items = [
     (Icons.home_rounded, 'Home'),
+    (Icons.camera_alt_rounded, 'Camera'),
     (Icons.tune_rounded, 'Edit'),
     (Icons.person_outline_rounded, 'Profile'),
   ];
