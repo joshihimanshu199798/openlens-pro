@@ -929,11 +929,10 @@ class __CameraScreenState extends State<_CameraScreen> {
                                     : AspectRatio(
                                         aspectRatio: switch (_aspectRatioLabel) { '16:9' => 16 / 9, '3:2' => 3 / 2, '1:1' => 1, _ => 4 / 3 },
                                         child: ClipRect(
-                                          child: OverflowBox(
-                                            alignment: Alignment.center,
-                                            minWidth: 0, minHeight: 0,
-                                            maxWidth: double.infinity, maxHeight: double.infinity,
+                                          child: FittedBox(
+                                            fit: BoxFit.cover,
                                             child: AspectRatio(
+                                              // FittedBox crops the sensor's native ratio without distortion.
                                               aspectRatio: camera.value.aspectRatio,
                                               child: CameraPreview(camera),
                                             ),
