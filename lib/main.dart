@@ -503,7 +503,23 @@ class __CameraScreenState extends State<_CameraScreen> {
           final red = (_gradeWarmth * 0.12 + _gradeTint * 0.025).clamp(-0.2, 0.2).toStringAsFixed(3);
           final blue = (-_gradeWarmth * 0.12 + _gradeTint * 0.025).clamp(-0.2, 0.2).toStringAsFixed(3);
           final green = (-_gradeTint * 0.05).clamp(-0.1, 0.1).toStringAsFixed(3);
-          final filter = 'eq=brightness=$brightness:contrast=$contrast:saturation=$saturation,colorbalance=rs=$red:gs=$green:bs=$blue';
+          var filter = 'eq=brightness=$brightness:contrast=$contrast:saturation=$saturation,colorbalance=rs=$red:gs=$green:bs=$blue';
+          // Distinct analog-video processing is baked into the exported recording,
+          // not just painted over the live preview.
+          switch (_activePreset.toLowerCase()) {
+            case 'vhs':
+              filter += ',noise=alls=18:allf=t+u,eq=saturation=0.78:contrast=1.18,vignette=PI/5';
+              break;
+            case '8mm':
+              filter += ',noise=alls=28:allf=t+u,eq=saturation=0.72:contrast=1.22:brightness=0.025,vignette=PI/4';
+              break;
+            case 'camcorder':
+              filter += ',noise=alls=10:allf=t+u,eq=saturation=1.12:contrast=1.08,drawgrid=w=iw:h=4:t=1:c=black@0.10';
+              break;
+            case 'faded film':
+              filter += ',noise=alls=8:allf=t+u,eq=contrast=0.88:saturation=0.72:brightness=0.04';
+              break;
+          }
           try {
             final session = await FFmpegKit.executeWithArguments([
               '-y', '-i', video.path, '-vf', filter, '-c:v', 'mpeg4',
@@ -2242,29 +2258,30 @@ class _VideoLookPickerPageState extends State<_VideoLookPickerPage> {
       (_category == 'All' || p.category == _category) &&
       ('${p.name} ${p.hint} ${p.category}'.toLowerCase().contains(query))).toList();
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8F6),
-      appBar: AppBar(title: const Text('Retro video looks', style: TextStyle(fontWeight: FontWeight.w900)),
-        backgroundColor: const Color(0xFFF8F8F6)),
+      backgroundColor: const Color(0xFF090B0E),
+      appBar: AppBar(title: const Text('Video looks', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
+        iconTheme: const IconThemeData(color: Colors.white),
+        backgroundColor: const Color(0xFF090B0E)),
       body: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Padding(padding: EdgeInsets.fromLTRB(18, 0, 18, 8), child: Text('Choose a look first. Your camera opens in video mode with that look selected.',
           style: TextStyle(color: Color(0xFF777777), fontSize: 13))),
         Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: TextField(
           onChanged: (v) => setState(() => _search = v),
           decoration: InputDecoration(hintText: 'Search retro filters', prefixIcon: const Icon(Icons.search_rounded),
-            filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE4E4E0)))),
+            filled: true, fillColor: const Color(0xFF171B20), hintStyle: const TextStyle(color: Color(0xFF9AA1AA)), prefixIconColor: const Color(0xFFB8F36B), style: const TextStyle(color: Colors.white), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF343A42)))),
         )),
         const SizedBox(height: 10),
         SizedBox(height: 42, child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 16),
           children: [for (final c in categories) Padding(padding: const EdgeInsets.only(right: 7), child: ChoiceChip(
             label: Text(c), selected: c == _category, onSelected: (_) => setState(() => _category = c),
-            selectedColor: const Color(0xFFB8F36B), labelStyle: TextStyle(fontWeight: FontWeight.w800, color: c == _category ? Colors.black : const Color(0xFF555555)),
+            selectedColor: const Color(0xFFB8F36B), backgroundColor: const Color(0xFF171B20), side: const BorderSide(color: Color(0xFF343A42)), labelStyle: TextStyle(fontWeight: FontWeight.w800, color: c == _category ? Colors.black : Colors.white),
           ))])),
         const Padding(padding: EdgeInsets.fromLTRB(18, 10, 18, 8), child: Text('TAP A PREVIEW TO OPEN VIDEO CAMERA', style: TextStyle(fontSize: 10, letterSpacing: 1, fontWeight: FontWeight.w900, color: Color(0xFF777777)))),
         Expanded(child: GridView.builder(padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: .92),
           itemCount: looks.length, itemBuilder: (context, i) {
             final p = looks[i];
-            return Material(color: Colors.white, borderRadius: BorderRadius.circular(18), clipBehavior: Clip.antiAlias,
+            return Material(color: const Color(0xFF171B20), borderRadius: BorderRadius.circular(18), clipBehavior: Clip.antiAlias,
               child: InkWell(onTap: () => widget.onSelected(p), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Expanded(child: Stack(fit: StackFit.expand, children: [
                   CustomPaint(painter: _LookSamplePainter(_previewColors(p)), child: const SizedBox.expand()),
@@ -2274,9 +2291,9 @@ class _VideoLookPickerPageState extends State<_VideoLookPickerPage> {
                   const Positioned(right: 9, bottom: 9, child: CircleAvatar(radius: 15, backgroundColor: Color(0xFFC5FF72), child: Icon(Icons.videocam_rounded, color: Colors.black, size: 17))),
                 ])),
                 Padding(padding: const EdgeInsets.fromLTRB(10, 9, 10, 10), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Color(0xFF202124))),
+                  Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: Colors.white)),
                   const SizedBox(height: 3),
-                  Text(p.hint, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, color: Color(0xFF777777))),
+                  Text(p.hint, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, color: Color(0xFFB5BAC2))),
                 ])),
               ])),
             );
