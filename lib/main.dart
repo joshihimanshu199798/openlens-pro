@@ -2142,7 +2142,7 @@ class OpenLensShell extends StatefulWidget {
 }
 
 class _OpenLensShellState extends State<OpenLensShell> {
-  int _tab = 0;
+  int _tab = 1;
   _SignaturePreset? _videoPreset;
   final List<XFile> _recent = [];
   XFile? _editingImage;
@@ -2192,34 +2192,24 @@ class _OpenLensShellState extends State<OpenLensShell> {
         recent: _recent,
         onPick: _pickImage,
         onOpen: _openEditor,
-        onCamera: () => setState(() => _tab = 2),
+        onCamera: () => setState(() => _tab = 1),
         onBrowse: () => setState(() => _tab = 1),
       ),
-      _VideoLookPickerPage(
-        presets: [...__CameraScreenPresets.all],
-        onSelected: (preset) => setState(() { _videoPreset = preset; _tab = 2; }),
-      ),
-      _tab == 2 ? _CameraScreen(key: ValueKey(_videoPreset?.name ?? 'default-camera'), initialPreset: _videoPreset, startInVideo: _videoPreset != null) : const _CameraLanding(),
+      _CameraScreen(key: ValueKey(_videoPreset?.name ?? 'default-camera'), initialPreset: _videoPreset, startInVideo: _videoPreset != null),
       _PhotoEditorScreen(
         image: _editingImage,
         onPick: _pickImage,
         onSaved: _rememberEdited,
         onAssistant: (controller) => _showAssistant(controller),
       ),
-      _ProfileWorkspace(onPick: _pickImage, onCamera: () => setState(() => _tab = 2)),
+      _ProfileWorkspace(onPick: _pickImage, onCamera: () => setState(() => _tab = 1)),
     ];
     return Scaffold(
       backgroundColor: _workspacePaper,
       body: IndexedStack(index: _tab, children: pages),
       bottomNavigationBar: _WorkspaceNavigation(
-        selected: _tab,
-        onSelected: (index) {
-          if (index == 3 && _editingImage == null) {
-            _pickImage();
-            return;
-          }
-          setState(() => _tab = index);
-        },
+        selected: _tab == 0 ? 0 : _tab == 2 ? 1 : _tab == 3 ? 2 : -1,
+        onSelected: (index) => setState(() => _tab = index == 0 ? 0 : index == 1 ? 2 : 3),
       ),
     );
   }
@@ -2332,8 +2322,6 @@ class _WorkspaceNavigation extends StatelessWidget {
 
   static const _items = [
     (Icons.home_rounded, 'Home'),
-    (Icons.video_library_outlined, 'Video'),
-    (Icons.camera_alt_outlined, 'Camera'),
     (Icons.tune_rounded, 'Edit'),
     (Icons.person_outline_rounded, 'Profile'),
   ];
