@@ -59,6 +59,9 @@ class __CameraScreenState extends State<_CameraScreen> {
   bool _busy = false;
   bool _recording = false;
   bool _grid = true;
+  bool _hdrEnabled = false;
+  bool _levelerEnabled = true;
+  String? _lastPhotoPath;
   bool _wideAspect = false;
   bool _showRetroTuning = false;
   bool _timestampOverlay = false;
@@ -873,6 +876,13 @@ class __CameraScreenState extends State<_CameraScreen> {
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTapDown: (details) => _tapToFocus(details, context),
+                      onHorizontalDragEnd: (details) {
+                        if (_recording || (details.primaryVelocity ?? 0).abs() < 180) return;
+                        const modes = ['PHOTO', 'VIDEO', 'PORTRAIT', 'PRO'];
+                        final current = modes.indexOf(_mode);
+                        final direction = (details.primaryVelocity ?? 0) < 0 ? 1 : -1;
+                        setState(() => _mode = modes[(current + direction + modes.length) % modes.length]);
+                      },
                       child: ClipRect(
                         child: ColorFiltered(
                           colorFilter: ColorFilter.matrix(_gradeMatrix),
@@ -915,6 +925,7 @@ class __CameraScreenState extends State<_CameraScreen> {
                 ],
                 // Overlays are deliberately light and never consume preview space.
                 if (_grid && _mode != 'VIDEO') Positioned.fill(child: IgnorePointer(child: _CompositionGrid(mode: _compositionGuide))),
+                if (_levelerEnabled && _mode != 'VIDEO') Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: _LevelerPainter()))),
                 if (_countdownRemaining != null)
                   Center(
                     child: Container(
@@ -966,37 +977,13 @@ class __CameraScreenState extends State<_CameraScreen> {
   }
 
   Widget _topBar() => Row(
+    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
     children: [
-      Container(
-        width: 38, height: 38,
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: .30),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withValues(alpha: .12)),
-        ),
-        child: const Icon(Icons.camera_rounded, color: Color(0xFFC5FF72), size: 21),
-      ),
-      const SizedBox(width: 10),
-      const Expanded(
-        child: Text('OPENLENS',
-          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, letterSpacing: 2.1)),
-      ),
-      _minimalTopAction(
-        tooltip: 'Composition grid',
-        icon: _grid ? Icons.grid_4x4_rounded : Icons.grid_off_rounded,
-        onPressed: () => setState(() => _grid = !_grid),
-      ),
-      _minimalTopAction(
-        tooltip: 'Filters and looks',
-        icon: Icons.auto_awesome_rounded,
-        onPressed: _openLooks,
-        active: _activePreset != 'Auto',
-      ),
-      _minimalTopAction(
-        tooltip: 'Camera settings',
-        icon: _showSettings ? Icons.close_rounded : Icons.tune_rounded,
-        onPressed: () => setState(() => _showSettings = !_showSettings),
-      ),
+      _minimalTopAction(tooltip: 'Flash: ${_flash.name}', icon: _flash == FlashMode.off ? Icons.flash_off_rounded : Icons.flash_on_rounded, onPressed: _toggleFlash),
+      _minimalTopAction(tooltip: 'Timer: ${_selfTimerSeconds}s', icon: Icons.timer_outlined, onPressed: () => setState(() => _selfTimerSeconds = _selfTimerSeconds == 0 ? 3 : _selfTimerSeconds == 3 ? 10 : 0), active: _selfTimerSeconds > 0),
+      _minimalTopAction(tooltip: _hdrEnabled ? 'HDR on' : 'HDR off', icon: Icons.hdr_on_rounded, onPressed: () => setState(() => _hdrEnabled = !_hdrEnabled), active: _hdrEnabled),
+      _minimalTopAction(tooltip: _wideAspect ? 'Aspect ratio 16:9' : 'Aspect ratio 4:3', icon: _wideAspect ? Icons.crop_16_9_rounded : Icons.crop_3_2_rounded, onPressed: () => setState(() => _wideAspect = !_wideAspect), active: _wideAspect),
+      _minimalTopAction(tooltip: 'Leveler and grid', icon: _levelerEnabled ? Icons.straighten_rounded : Icons.grid_off_rounded, onPressed: () => setState(() { _levelerEnabled = !_levelerEnabled; _grid = _levelerEnabled; }), active: _levelerEnabled),
     ],
   );
 
@@ -1011,7 +998,7 @@ class __CameraScreenState extends State<_CameraScreen> {
     constraints: const BoxConstraints.tightFor(width: 42, height: 42),
     onPressed: onPressed,
     style: IconButton.styleFrom(
-      backgroundColor: Colors.black.withValues(alpha: .28),
+      backgroundColor: Colors.black.withValues(alpha: .10),
       foregroundColor: active ? const Color(0xFFC5FF72) : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
