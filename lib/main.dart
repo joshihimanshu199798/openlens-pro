@@ -2276,6 +2276,7 @@ class _OpenLensShellState extends State<OpenLensShell> {
       _PhotoEditorScreen(
         image: _editingImage,
         onPick: _pickImage,
+        onCamera: () => setState(() => _tab = 1),
         onSaved: _rememberEdited,
         onAssistant: (controller) => _showAssistant(controller),
       ),
@@ -2601,9 +2602,10 @@ class _ProfileWorkspace extends StatelessWidget {
 }
 
 class _PhotoEditorScreen extends StatefulWidget {
-  const _PhotoEditorScreen({required this.image, required this.onPick, required this.onSaved, required this.onAssistant});
+  const _PhotoEditorScreen({required this.image, required this.onPick, required this.onCamera, required this.onSaved, required this.onAssistant});
   final XFile? image;
   final Future<void> Function() onPick;
+  final VoidCallback onCamera;
   final ValueChanged<XFile> onSaved;
   final Future<void> Function(_PhotoEditorScreenState controller) onAssistant;
   @override
@@ -2692,7 +2694,19 @@ class _PhotoEditorScreenState extends State<_PhotoEditorScreen> {
         ]),
         title: const Text('Edit photo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
         centerTitle: true,
-        actions: [TextButton(onPressed: _saving ? null : _save, child: _saving ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Save', style: TextStyle(color: _workspaceInk, fontWeight: FontWeight.w900))), const SizedBox(width: 8)],
+        actions: [
+          IconButton(tooltip: 'Open camera', onPressed: widget.onCamera, icon: const Icon(Icons.camera_alt_rounded)),
+          PopupMenuButton<String>(
+            tooltip: 'More options',
+            onSelected: (value) { if (value == 'camera') widget.onCamera(); if (value == 'gallery') widget.onPick(); },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'camera', child: ListTile(leading: Icon(Icons.camera_alt_rounded), title: Text('Open camera'))),
+              PopupMenuItem(value: 'gallery', child: ListTile(leading: Icon(Icons.photo_library_outlined), title: Text('Choose photo'))),
+            ],
+          ),
+          TextButton(onPressed: _saving ? null : _save, child: _saving ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Save', style: TextStyle(color: _workspaceInk, fontWeight: FontWeight.w900))),
+          const SizedBox(width: 8),
+        ],
       ),
       body: Column(children: [
         Expanded(flex: 6, child: Center(
