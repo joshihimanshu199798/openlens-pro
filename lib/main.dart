@@ -557,6 +557,33 @@ class __CameraScreenState extends State<_CameraScreen> {
             case 'studio neutral':
               filter += ',eq=contrast=1.06:saturation=0.94:brightness=0.015';
               break;
+            case 'silver gelatin':
+            case 'classic mono':
+            case 'monochrome portrait':
+              filter += ',hue=s=0,eq=contrast=1.12:brightness=0.005,noise=alls=3:allf=t';
+              break;
+            case 'noir contrast':
+              filter += ',hue=s=0,eq=contrast=1.48:brightness=-0.04,curves=preset=strong_contrast';
+              break;
+            case 'sepia journal':
+              filter += ',hue=s=0.48,colorbalance=rs=0.14:gs=0.04:bs=-0.14,eq=contrast=0.96:brightness=0.02';
+              break;
+            case 'analog memories':
+            case 'polaroid fade':
+              filter += ',noise=alls=12:allf=t+u,eq=contrast=0.82:saturation=0.72:brightness=0.05,colorbalance=rs=0.07:gs=0.025:bs=-0.07,vignette=PI/4';
+              break;
+            case 'retro pop':
+            case '90s disposable':
+              filter += ',noise=alls=14:allf=t+u,eq=contrast=1.20:saturation=1.18,colorbalance=rs=0.06:gs=0.015:bs=-0.04,vignette=PI/5';
+              break;
+            case 'bleach bypass':
+              filter += ',eq=contrast=1.42:saturation=0.42:brightness=-0.02';
+              break;
+            case 'gold 200':
+            case 'golden hour':
+            case 'warm print':
+              filter += ',eq=contrast=1.12:saturation=1.12:brightness=0.02,colorbalance=rs=0.12:gs=0.035:bs=-0.12';
+              break;
           }
           try {
             final session = await FFmpegKit.executeWithArguments([
