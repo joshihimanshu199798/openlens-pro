@@ -461,6 +461,7 @@ class __CameraScreenState extends State<_CameraScreen> {
           await _applyGradeToFile(photo.path, savedPath);
         }
         await Gal.putImage(savedPath, album: 'OpenLens Pro');
+        if (mounted && shot == 0) setState(() => _lastPhotoPath = savedPath);
         if (shot + 1 < shotCount) {
           await Future<void>.delayed(const Duration(milliseconds: 350));
         }
@@ -1245,9 +1246,9 @@ class __CameraScreenState extends State<_CameraScreen> {
             Expanded(
               child: Center(
                 child: _roundAction(
-                  tooltip: 'Open gallery',
-                  icon: Icons.photo_outlined,
-                  onTap: _openGalleryPreview,
+                  tooltip: 'Switch front / back camera',
+                  icon: Icons.cameraswitch_rounded,
+                  onTap: _switchCamera,
                 ),
               ),
             ),
@@ -1279,25 +1280,31 @@ class __CameraScreenState extends State<_CameraScreen> {
             ),
             Expanded(
               child: Center(
-                child: _roundAction(
-                  tooltip: 'Exposure and manual controls',
-                  icon: Icons.exposure_rounded,
-                  onTap: () => setState(() => _showSettings = !_showSettings),
+                child: GestureDetector(
+                  onTap: _openGalleryPreview,
+                  child: Container(
+                    width: 46, height: 46,
+                    decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white.withValues(alpha: .85), width: 2), color: Colors.black.withValues(alpha: .28)),
+                    clipBehavior: Clip.antiAlias,
+                    child: _lastPhotoPath != null && File(_lastPhotoPath!).existsSync()
+                      ? Image.file(File(_lastPhotoPath!), fit: BoxFit.cover)
+                      : const Icon(Icons.photo_library_outlined, size: 21, color: Colors.white),
+                  ),
                 ),
               ),
             ),
           ],
         ),
         SizedBox(height: compact ? 10 : 14),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+        Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(color: Colors.black.withValues(alpha: .20), borderRadius: BorderRadius.circular(22), border: Border.all(color: Colors.white.withValues(alpha: .18))),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
             _modeButton('PHOTO'),
-            const SizedBox(width: 22),
-            _modeButton('PRO'),
-            const SizedBox(width: 22),
             _modeButton('VIDEO'),
-          ],
+            _modeButton('PORTRAIT'),
+            _modeButton('PRO'),
+          ]),
         ),
         const SizedBox(height: 8),
         Row(
@@ -1686,6 +1693,21 @@ class _HistogramPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _HistogramPainter oldDelegate) => oldDelegate.values != values;
+}
+
+class _LevelerPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height * .46);
+    final paint = Paint()..color = const Color(0xFFC5FF72).withValues(alpha: .72)..strokeWidth = 1.2..style = PaintingStyle.stroke;
+    canvas.drawLine(Offset(center.dx - 32, center.dy), Offset(center.dx - 9, center.dy), paint);
+    canvas.drawLine(Offset(center.dx + 9, center.dy), Offset(center.dx + 32, center.dy), paint);
+    canvas.drawCircle(center, 8, paint);
+    canvas.drawLine(Offset(center.dx, center.dy - 15), Offset(center.dx, center.dy - 8), paint);
+    canvas.drawLine(Offset(center.dx, center.dy + 8), Offset(center.dx, center.dy + 15), paint);
+  }
+  @override
+  bool shouldRepaint(covariant _LevelerPainter oldDelegate) => false;
 }
 
 class _CompositionGrid extends StatelessWidget {
