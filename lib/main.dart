@@ -513,16 +513,28 @@ class __CameraScreenState extends State<_CameraScreen> {
           // not just painted over the live preview.
           switch (_activePreset.toLowerCase()) {
             case 'vhs':
-              filter += ',noise=alls=18:allf=t+u,eq=saturation=0.78:contrast=1.18,vignette=PI/5';
+              filter += ',noise=alls=22:allf=t+u,eq=saturation=0.72:contrast=1.24:brightness=-0.015,vignette=PI/5,drawbox=x=0:y=ih*0.68:w=iw:h=4:color=white@0.28:t=fill,drawbox=x=0:y=ih*0.69:w=iw*0.38:h=3:color=cyan@0.28:t=fill,drawbox=x=iw*0.6:y=ih*0.70:w=iw*0.4:h=3:color=red@0.24:t=fill';
               break;
             case '8mm':
-              filter += ',noise=alls=28:allf=t+u,eq=saturation=0.72:contrast=1.22:brightness=0.025,vignette=PI/4';
+              filter += ',noise=alls=32:allf=t+u,eq=saturation=0.66:contrast=1.28:brightness=0.025,colorbalance=rs=0.10:gs=0.02:bs=-0.10,vignette=PI/3';
               break;
             case 'camcorder':
-              filter += ',noise=alls=10:allf=t+u,eq=saturation=1.12:contrast=1.08,drawgrid=w=iw:h=4:t=1:c=black@0.10';
+              filter += ',noise=alls=8:allf=t+u,eq=saturation=1.18:contrast=1.08,colorbalance=rs=-0.04:gs=0.02:bs=0.06,drawbox=x=0:y=ih*0.88:w=iw:h=ih*0.12:color=black@0.20:t=fill,drawtext=text=%{localtime}:fontcolor=white:fontsize=18:x=iw*0.04:y=ih*0.91';
               break;
             case 'faded film':
-              filter += ',noise=alls=8:allf=t+u,eq=contrast=0.88:saturation=0.72:brightness=0.04';
+              filter += ',noise=alls=9:allf=t+u,eq=contrast=0.82:saturation=0.62:brightness=0.055,colorbalance=rs=0.06:gs=0.025:bs=-0.06';
+              break;
+            case 'moonmilk':
+              filter += ',eq=brightness=0.045:contrast=0.88:saturation=0.62,colorbalance=rs=0.02:gs=0.025:bs=0.08';
+              break;
+            case 'neon bazaar':
+              filter += ',eq=contrast=1.28:saturation=1.55,colorbalance=rs=0.08:gs=-0.03:bs=0.12,curves=preset=strong_contrast';
+              break;
+            case 'monsoon chrome':
+              filter += ',eq=contrast=1.18:saturation=1.30,colorbalance=rs=-0.04:gs=0.03:bs=0.10';
+              break;
+            case 'studio neutral':
+              filter += ',eq=contrast=1.06:saturation=0.94:brightness=0.015';
               break;
           }
           try {
@@ -1226,7 +1238,12 @@ class __CameraScreenState extends State<_CameraScreen> {
                       child: Column(children: [
                         Expanded(child: ClipRRect(
                           borderRadius: BorderRadius.circular(7),
-                          child: CustomPaint(painter: _LookSamplePainter(_previewColors(look)), child: const SizedBox.expand()),
+                          child: (_lastPhotoPath != null && File(_lastPhotoPath!).existsSync())
+                            ? ColorFiltered(
+                                colorFilter: ColorFilter.matrix(_thumbnailMatrix(look)),
+                                child: Image.file(File(_lastPhotoPath!), fit: BoxFit.cover, errorBuilder: (_, __, ___) => CustomPaint(painter: _LookSamplePainter(_previewColors(look)), child: const SizedBox.expand())),
+                              )
+                            : CustomPaint(painter: _LookSamplePainter(_previewColors(look)), child: const SizedBox.expand()),
                         )),
                         const SizedBox(height: 4),
                         Text(look.name, maxLines: 1, overflow: TextOverflow.ellipsis,
@@ -1801,6 +1818,22 @@ class _SignaturePreset {
   }
 }
 
+
+List<double> _thumbnailMatrix(_SignaturePreset preset) {
+  final saturation = preset.saturation.clamp(0.0, 2.0);
+  final contrast = preset.contrast.clamp(0.5, 1.8);
+  final warmth = preset.warmth * 22;
+  final tint = preset.tint * 12;
+  final inv = 1 - saturation;
+  final r = .213 * inv, g = .715 * inv, b = .072 * inv;
+  final offset = (1 - contrast) * 128;
+  return [
+    (r + saturation) * contrast, g * contrast, b * contrast, 0, offset + warmth + tint,
+    r * contrast, (g + saturation) * contrast, b * contrast, 0, offset - tint * .25,
+    r * contrast, g * contrast, (b + saturation) * contrast, 0, offset - warmth,
+    0, 0, 0, 1, 0,
+  ];
+}
 
 List<Color> _previewColors(_SignaturePreset preset) {
   final warmth = preset.warmth;
