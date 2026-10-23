@@ -892,7 +892,7 @@ class __CameraScreenState extends State<_CameraScreen> {
                   Positioned.fill(child: _cameraPlaceholder()),
                 if (_mode == 'VIDEO') ...[
                   Positioned.fill(child: IgnorePointer(child: CustomPaint(
-                    painter: _RetroTexturePainter(grain: _grainIntensity, bleed: _colorBleed, tracking: _trackingDistortion),
+                    painter: _RetroTexturePainter(grain: _grainIntensity, bleed: _colorBleed, tracking: _trackingDistortion, preset: _activePreset),
                   ))),
                   if (_timestampOverlay)
                     Positioned(left: 20, bottom: 270, child: IgnorePointer(child: Text(
@@ -1790,15 +1790,36 @@ List<Color> _previewColors(_SignaturePreset preset) {
 }
 
 class _RetroTexturePainter extends CustomPainter {
-  _RetroTexturePainter({required this.grain, required this.bleed, required this.tracking});
+  _RetroTexturePainter({required this.grain, required this.bleed, required this.tracking, required this.preset});
   final double grain;
   final double bleed;
   final double tracking;
+  final String preset;
   @override
   void paint(Canvas canvas, Size size) {
-    final scan = Paint()..color = Colors.black.withValues(alpha: .10 + tracking * .12);
-    for (double y = 0; y < size.height; y += 4) {
-      canvas.drawRect(Rect.fromLTWH(0, y, size.width, 1), scan);
+    final look = preset.toLowerCase();
+    final isVhs = look == 'vhs';
+    final is8mm = look == '8mm';
+    final isCamcorder = look == 'camcorder';
+    final scan = Paint()..color = Colors.black.withValues(alpha: isVhs ? .20 : isCamcorder ? .14 : is8mm ? .07 : .035 + tracking * .06);
+    final step = isVhs ? 3.0 : isCamcorder ? 4.0 : is8mm ? 6.0 : 5.0;
+    for (double y = 0; y < size.height; y += step) {
+      canvas.drawRect(Rect.fromLTWH(0, y, size.width, isVhs ? 1.4 : 1), scan);
+    }
+    if (isVhs || isCamcorder) {
+      final offset = size.height * (isVhs ? .64 : .82);
+      canvas.drawRect(Rect.fromLTWH(0, offset, size.width, isVhs ? 5 : 2), Paint()..color = Colors.white.withValues(alpha: isVhs ? .22 : .12));
+      if (isVhs) {
+        canvas.drawRect(Rect.fromLTWH(0, offset + 8, size.width * .42, 3), Paint()..color = const Color(0xFF00E5FF).withValues(alpha: .24));
+        canvas.drawRect(Rect.fromLTWH(size.width * .57, offset + 8, size.width * .43, 3), Paint()..color = const Color(0xFFFF3040).withValues(alpha: .22));
+      }
+    }
+    if (is8mm) {
+      final edge = Paint()..color = const Color(0xFFFFC078).withValues(alpha: .09);
+      canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), edge);
+      for (double y = 10; y < size.height; y += 73) {
+        canvas.drawCircle(Offset(size.width * .93, y), 1.4, Paint()..color = Colors.white.withValues(alpha: .65));
+      }
     }
     if (bleed > .01) {
       final tint = Paint()..color = const Color(0xFFFF3030).withValues(alpha: bleed * .10);
