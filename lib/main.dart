@@ -100,6 +100,9 @@ class __CameraScreenState extends State<_CameraScreen> {
   // Curated original recipes inspired by widely used film, portrait, cinematic,
   // travel, street, monochrome, social, night, and product-grading aesthetics.
   static const List<_SignaturePreset> _libraryPresets = [
+  _SignaturePreset('VHS', 'Muted tape colors and warm shadows', Icons.videocam_rounded, 0.04, 1, FlashMode.off, category: 'Retro Video', brightness: -0.035, contrast: 0.82, saturation: 0.66, warmth: 0.38, tint: 0.12),
+  _SignaturePreset('8mm', 'Golden vintage film with punchy contrast', Icons.movie_filter_rounded, 0.08, 1, FlashMode.off, category: 'Retro Video', brightness: 0.07, contrast: 1.24, saturation: 0.82, warmth: 0.60, tint: -0.08),
+  _SignaturePreset('Camcorder', 'Cool blue early-digital video', Icons.video_camera_back_rounded, 0, 1, FlashMode.off, category: 'Retro Video', brightness: 0.01, contrast: 1.17, saturation: 1.32, warmth: -0.52, tint: -0.10),
   _SignaturePreset('Portra Glow', 'Film look', Icons.camera_roll_rounded, 0.06, 1.0, FlashMode.off, category: 'Film', brightness: 0.03, contrast: 1.03, saturation: 0.92, warmth: 0.22, tint: 0.02),
   _SignaturePreset('Gold 200', 'Film look', Icons.camera_roll_rounded, 0.10, 1.0, FlashMode.off, category: 'Film', brightness: 0.05, contrast: 1.12, saturation: 1.12, warmth: 0.35, tint: 0.01),
   _SignaturePreset('Chrome Slide', 'Film look', Icons.camera_roll_rounded, 0.00, 1.0, FlashMode.off, category: 'Film', brightness: 0.00, contrast: 1.22, saturation: 1.22, warmth: 0.06, tint: -0.02),
@@ -1047,7 +1050,7 @@ class __CameraScreenState extends State<_CameraScreen> {
               for (final name in ['Standard', 'VHS', '8mm', 'Camcorder', ..._quickLookNames])
                 Builder(builder: (context) {
                   final candidates = _allPresets.where((p) => p.name == name);
-                  final preset = candidates.isNotEmpty ? candidates.first : (name == 'VHS' ? _allPresets.firstWhere((p) => p.name == 'Faded Film', orElse: () => _allPresets.first) : _allPresets.first);
+                  final preset = candidates.isNotEmpty ? candidates.first : _allPresets.firstWhere((p) => p.name == 'Auto', orElse: () => _allPresets.first);
                   final selected = name == 'Standard' ? _activePreset == 'Auto' : _activePreset == preset.name || _activePreset == name;
                   return GestureDetector(
                     onTap: () => name == 'Standard' ? _applyPreset(_allPresets.firstWhere((p) => p.name == 'Auto', orElse: () => _allPresets.first)) : _applyPreset(preset),
@@ -1056,8 +1059,11 @@ class __CameraScreenState extends State<_CameraScreen> {
                       decoration: BoxDecoration(color: selected ? Colors.white.withValues(alpha: .14) : Colors.transparent,
                         borderRadius: BorderRadius.circular(17), border: Border.all(color: selected ? Colors.white : Colors.white24, width: selected ? 2 : 1)),
                       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Icon(name == 'VHS' ? Icons.videocam_rounded : name == '8mm' ? Icons.movie_filter_rounded : name == 'Camcorder' ? Icons.video_camera_back_rounded : Icons.circle_outlined,
-                          color: Colors.white, size: 20),
+                        Container(width: 28, height: 28, decoration: BoxDecoration(shape: BoxShape.circle,
+                          gradient: LinearGradient(colors: [
+                            Color.lerp(const Color(0xFF8099B8), const Color(0xFFFFB45A), ((preset.warmth + 1) / 2).clamp(0.0, 1.0))!,
+                            Color.lerp(const Color(0xFF555B70), const Color(0xFFDD7196), ((preset.saturation - 0.5) / 1.5).clamp(0.0, 1.0))!,
+                          ])), child: Icon(name == 'VHS' ? Icons.videocam_rounded : name == '8mm' ? Icons.movie_filter_rounded : name == 'Camcorder' ? Icons.video_camera_back_rounded : Icons.circle_outlined, color: Colors.white, size: 15)),
                         const SizedBox(height: 3),
                         Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w700)),
                       ]),
@@ -1067,7 +1073,17 @@ class __CameraScreenState extends State<_CameraScreen> {
               IconButton(onPressed: _openLooks, icon: const Icon(Icons.tune_rounded, color: Colors.white), tooltip: 'All filters'),
             ]),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            TextButton.icon(onPressed: _recording ? null : () => setState(() => _mode = 'PHOTO'),
+              icon: const Icon(Icons.photo_camera_outlined, size: 17), label: const Text('PHOTO'),
+              style: TextButton.styleFrom(foregroundColor: Colors.white70)),
+            const SizedBox(width: 16),
+            const Icon(Icons.videocam_rounded, color: Color(0xFFC5FF72), size: 18),
+            const SizedBox(width: 5),
+            const Text('VIDEO', style: TextStyle(color: Color(0xFFC5FF72), fontWeight: FontWeight.bold)),
+          ]),
+          const SizedBox(height: 10),
           Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
             _roundAction(tooltip: 'Open gallery', icon: Icons.photo_outlined, onTap: _openGalleryPreview),
             GestureDetector(onTap: _busy ? null : _captureAction, child: Container(
