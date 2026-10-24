@@ -458,6 +458,42 @@ class __CameraScreenState extends State<_CameraScreen> {
     await File(outputPath).writeAsBytes(img.encodeJpg(decoded, quality: 94), flush: true);
   }
 
+  // Crop the captured sensor image to the selected composition ratio as well as
+  // framing the live preview. This ensures 1:1, 3:2 and 16:9 affect saved files.
+  Future<String> _cropCapturedPhoto(String sourcePath) async {
+    final label = _aspectRatioLabel;
+    if (label == 'Full') return sourcePath;
+    final targetRatio = switch (label) {
+      '16:9' => 16 / 9,
+      '3:2' => 3 / 2,
+      '1:1' => 1.0,
+      _ => 4 / 3,
+    };
+    final bytes = await File(sourcePath).readAsBytes();
+    final decoded = img.decodeImage(bytes);
+    if (decoded == null) return sourcePath;
+    final oriented = img.bakeOrientation(decoded);
+    final sourceRatio = oriented.width / oriented.height;
+    int cropWidth = oriented.width;
+    int cropHeight = oriented.height;
+    if (sourceRatio > targetRatio) {
+      cropWidth = (oriented.height * targetRatio).round().clamp(1, oriented.width);
+    } else if (sourceRatio < targetRatio) {
+      cropHeight = (oriented.width / targetRatio).round().clamp(1, oriented.height);
+    }
+    if (cropWidth == oriented.width && cropHeight == oriented.height) return sourcePath;
+    final cropped = img.copyCrop(
+      oriented,
+      x: (oriented.width - cropWidth) ~/ 2,
+      y: (oriented.height - cropHeight) ~/ 2,
+      width: cropWidth,
+      height: cropHeight,
+    );
+    final outputPath = '$sourcePath.ratio.jpg';
+    await File(outputPath).writeAsBytes(img.encodeJpg(cropped, quality: 95), flush: true);
+    return outputPath;
+  }
+
   Future<void> _takePhoto() async {
     final camera = _controller;
     if (camera == null || !camera.value.isInitialized || _busy) return;
@@ -477,7 +513,7 @@ class __CameraScreenState extends State<_CameraScreen> {
       final shotCount = _burstMode ? 3 : 1;
       for (var shot = 0; shot < shotCount; shot++) {
         final photo = await camera.takePicture();
-        var savedPath = photo.path;
+        var savedPath = await _cropCapturedPhoto(photo.path);
         if (_activePreset != 'Auto' || _gradeBrightness != 0 || _gradeContrast != 1 || _gradeSaturation != 1 || _gradeWarmth != 0 || _gradeTint != 0) {
           savedPath = '${photo.path}.graded.jpg';
           await _applyGradeToFile(photo.path, savedPath);
