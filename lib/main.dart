@@ -439,12 +439,32 @@ class __CameraScreenState extends State<_CameraScreen> {
   }
 
   List<double> get _gradeMatrix {
+    // Push each preset far enough to be visibly different in the live viewfinder.
+    // Intensity is blended from neutral (0%) to the full look (100%).
     final intensity = _filterIntensity;
-    final sat = 1 + (_gradeSaturation - 1) * intensity, c = 1 + (_gradeContrast - 1) * intensity;
-    final offset = _gradeBrightness * intensity * 255 + (1 - c) * 128;
+    final sat = 1 + (_gradeSaturation - 1) * intensity * 1.65;
+    final c = 1 + (_gradeContrast - 1) * intensity * 1.35;
+    final offset = _gradeBrightness * intensity * 255 * 1.25 + (1 - c) * 128;
     const lr = 0.213, lg = 0.715, lb = 0.072;
     final a = (1 - sat) * lr, d = (1 - sat) * lg, e = (1 - sat) * lb;
-    final warm = _gradeWarmth * intensity * 35, tint = _gradeTint * intensity * 22;
+    final warm = _gradeWarmth * intensity * 82;
+    final tint = _gradeTint * intensity * 58;
+    final look = _activePreset.toLowerCase();
+    final mono = look.contains('monochrome') || look.contains('silver gelatin') ||
+        look.contains('classic mono') || look.contains('noir') || look.contains('newspaper');
+    if (mono) {
+      final contrast = 1 + (_gradeContrast - 1) * intensity * 1.55;
+      return [0.213*contrast, 0.715*contrast, 0.072*contrast, 0, (1-contrast)*128 + _gradeBrightness*intensity*255,
+        0.213*contrast, 0.715*contrast, 0.072*contrast, 0, (1-contrast)*128 + _gradeBrightness*intensity*255,
+        0.213*contrast, 0.715*contrast, 0.072*contrast, 0, (1-contrast)*128 + _gradeBrightness*intensity*255,
+        0,0,0,1,0];
+    }
+    final sepia = look.contains('sepia') || look.contains('desert earth') || look.contains('70s warmth');
+    if (sepia) {
+      return [(a+sat)*c,d*c,e*c,0,offset+warm+intensity*14,
+        a*c,(d+sat)*c,e*c,0,offset+tint-intensity*3,
+        a*c,d*c,(e+sat)*c,0,offset-warm-intensity*12, 0,0,0,1,0];
+    }
     return [(a+sat)*c,d*c,e*c,0,offset+warm, a*c,(d+sat)*c,e*c,0,offset+tint, a*c,d*c,(e+sat)*c,0,offset-warm-tint*0.35, 0,0,0,1,0];
   }
 
@@ -453,11 +473,20 @@ class __CameraScreenState extends State<_CameraScreen> {
     if (decoded == null) throw const FormatException('Image could not be decoded');
     for (final px in decoded) {
       final r = px.r.toDouble(), g = px.g.toDouble(), b = px.b.toDouble();
+      final intensity = _filterIntensity;
+      final sat = 1 + (_gradeSaturation - 1) * intensity * 1.65;
+      final contrast = 1 + (_gradeContrast - 1) * intensity * 1.35;
       final luma = 0.213*r + 0.715*g + 0.072*b;
-      final rr = luma + (r-luma)*_gradeSaturation, gg = luma + (g-luma)*_gradeSaturation, bb = luma + (b-luma)*_gradeSaturation;
-      px.r = ((rr-128)*_gradeContrast+128+_gradeBrightness*255+_gradeWarmth*35).clamp(0,255).round();
-      px.g = ((gg-128)*_gradeContrast+128+_gradeBrightness*255+_gradeTint*22).clamp(0,255).round();
-      px.b = ((bb-128)*_gradeContrast+128+_gradeBrightness*255-_gradeWarmth*35-_gradeTint*8).clamp(0,255).round();
+      final rr = luma + (r-luma)*sat, gg = luma + (g-luma)*sat, bb = luma + (b-luma)*sat;
+      final warm = _gradeWarmth * intensity * 82, tint = _gradeTint * intensity * 58;
+      final mono = _activePreset.toLowerCase().contains('monochrome') || _activePreset.toLowerCase().contains('silver gelatin') || _activePreset.toLowerCase().contains('classic mono') || _activePreset.toLowerCase().contains('noir') || _activePreset.toLowerCase().contains('newspaper');
+      final sepia = _activePreset.toLowerCase().contains('sepia') || _activePreset.toLowerCase().contains('desert earth') || _activePreset.toLowerCase().contains('70s warmth');
+      final outR = mono ? luma : (rr-128)*contrast+128+_gradeBrightness*intensity*255*1.25+warm+(sepia ? intensity*14 : 0);
+      final outG = mono ? luma : (gg-128)*contrast+128+_gradeBrightness*intensity*255*1.25+tint-(sepia ? intensity*3 : 0);
+      final outB = mono ? luma : (bb-128)*contrast+128+_gradeBrightness*intensity*255*1.25-warm-(sepia ? intensity*12 : 0);
+      px.r = outR.clamp(0,255).round();
+      px.g = outG.clamp(0,255).round();
+      px.b = outB.clamp(0,255).round();
     }
     await File(outputPath).writeAsBytes(img.encodeJpg(decoded, quality: 94), flush: true);
   }
