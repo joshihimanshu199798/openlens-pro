@@ -1068,9 +1068,28 @@ class __CameraScreenState extends State<_CameraScreen> {
                 ),
                 if (_showSettings)
                   Positioned(
-                    left: 12, right: 12,
+                    left: 12,
+                    right: 12,
                     bottom: compact ? 210 : 232,
-                    child: SafeArea(top: false, child: _settingsPanel()),
+                    child: SafeArea(
+                      top: false,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          // Keep Pro controls in a bounded, scrollable sheet so
+                          // they cannot cover the top bar or fill the whole viewfinder.
+                          maxHeight: MediaQuery.of(context).size.height * 0.52,
+                        ),
+                        child: Material(
+                          color: const Color(0xF20A0D0F),
+                          borderRadius: BorderRadius.circular(20),
+                          clipBehavior: Clip.antiAlias,
+                          child: SingleChildScrollView(
+                            physics: const BouncingScrollPhysics(),
+                            child: _settingsPanel(),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 Positioned(
                   left: 0, right: 0, bottom: 0,
