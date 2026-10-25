@@ -3,6 +3,7 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:camera/camera.dart';
 import 'package:ffmpeg_kit_flutter_new_video/ffmpeg_kit.dart';
@@ -1079,13 +1080,31 @@ class __CameraScreenState extends State<_CameraScreen> {
                           // they cannot cover the top bar or fill the whole viewfinder.
                           maxHeight: MediaQuery.of(context).size.height * 0.52,
                         ),
-                        child: Material(
-                          color: const Color(0xF20A0D0F),
+                        child: ClipRRect(
                           borderRadius: BorderRadius.circular(20),
-                          clipBehavior: Clip.antiAlias,
-                          child: SingleChildScrollView(
-                            physics: const BouncingScrollPhysics(),
-                            child: _settingsPanel(),
+                          child: BackdropFilter(
+                            filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xE6090D10),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: const Color(0x66C5FF72),
+                                  width: 1,
+                                ),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color(0x3300F5FF),
+                                    blurRadius: 22,
+                                    spreadRadius: 1,
+                                  ),
+                                ],
+                              ),
+                              child: SingleChildScrollView(
+                                physics: const BouncingScrollPhysics(),
+                                child: _settingsPanel(),
+                              ),
+                            ),
                           ),
                         ),
                       ),
