@@ -1730,9 +1730,13 @@ class __CameraScreenState extends State<_CameraScreen> {
             _showMessage('Stop recording before changing modes.');
             return;
           }
-          setState(() => _mode = mode);
+          setState(() {
+            _mode = mode;
+            // Pro is a camera mode, not a sticky overlay. Always dismiss its
+            // tuning panel when the user switches to another mode.
+            _showSettings = mode == 'PRO';
+          });
           if (mode == 'VIDEO') _showMessage('Video mode ready. Tap the record control to start or stop.');
-          if (mode == 'PRO') setState(() => _showSettings = true);
         },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
