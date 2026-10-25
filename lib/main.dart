@@ -101,6 +101,8 @@ class __CameraScreenState extends State<_CameraScreen> {
   double _gradeSaturation = 1;
   double _gradeWarmth = 0;
   double _gradeTint = 0;
+  double _filterIntensity = 1.0;
+  String _filterCategory = 'All';
 
   // Curated original recipes inspired by widely used film, portrait, cinematic,
   // travel, street, monochrome, social, night, and product-grading aesthetics.
@@ -437,11 +439,12 @@ class __CameraScreenState extends State<_CameraScreen> {
   }
 
   List<double> get _gradeMatrix {
-    final sat = _gradeSaturation, c = _gradeContrast;
-    final offset = _gradeBrightness * 255 + (1 - c) * 128;
+    final intensity = _filterIntensity;
+    final sat = 1 + (_gradeSaturation - 1) * intensity, c = 1 + (_gradeContrast - 1) * intensity;
+    final offset = _gradeBrightness * intensity * 255 + (1 - c) * 128;
     const lr = 0.213, lg = 0.715, lb = 0.072;
     final a = (1 - sat) * lr, d = (1 - sat) * lg, e = (1 - sat) * lb;
-    final warm = _gradeWarmth * 35, tint = _gradeTint * 22;
+    final warm = _gradeWarmth * intensity * 35, tint = _gradeTint * intensity * 22;
     return [(a+sat)*c,d*c,e*c,0,offset+warm, a*c,(d+sat)*c,e*c,0,offset+tint, a*c,d*c,(e+sat)*c,0,offset-warm-tint*0.35, 0,0,0,1,0];
   }
 
@@ -1284,7 +1287,62 @@ class __CameraScreenState extends State<_CameraScreen> {
               IconButton(onPressed: _openLooks, icon: const Icon(Icons.tune_rounded, color: Colors.white), tooltip: 'All filters'),
             ]),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 32,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (final category in ['All', 'Film', 'Portrait', 'Cinematic', 'Retro Video', 'Night', 'Creative'])
+                  Padding(
+                    padding: const EdgeInsets.only(right: 7),
+                    child: ChoiceChip(
+                      label: Text(category, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                      selected: _filterCategory == category,
+                      showCheckmark: false,
+                      visualDensity: VisualDensity.compact,
+                      selectedColor: const Color(0xFFC5FF72),
+                      backgroundColor: const Color(0xB8121216),
+                      side: BorderSide(color: _filterCategory == category ? const Color(0xFFC5FF72) : Colors.white24),
+                      labelStyle: TextStyle(color: _filterCategory == category ? const Color(0xFF171B12) : Colors.white),
+                      onSelected: (_) {
+                        HapticFeedback.selectionClick();
+                        setState(() => _filterCategory = category);
+                        if (category != 'All') {
+                          final match = _allPresets.where((p) => p.category.toLowerCase().contains(category.toLowerCase())).firstOrNull;
+                          if (match != null) _applyPreset(match);
+                        }
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(6, 0, 6, 2),
+            child: Row(children: [
+              const Icon(Icons.tune_rounded, size: 14, color: Colors.white70),
+              const SizedBox(width: 6),
+              const Text('INTENSITY', style: TextStyle(fontSize: 9, letterSpacing: 1.1, fontWeight: FontWeight.w800, color: Colors.white70)),
+              Expanded(child: SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 2.5,
+                  activeTrackColor: const Color(0xFFC5FF72),
+                  thumbColor: const Color(0xFFC5FF72),
+                  inactiveTrackColor: Colors.white24,
+                  overlayColor: const Color(0x33C5FF72),
+                ),
+                child: Slider(
+                  value: _filterIntensity,
+                  min: 0,
+                  max: 1,
+                  onChanged: (value) => setState(() => _filterIntensity = value),
+                ),
+              )),
+              SizedBox(width: 34, child: Text('${(_filterIntensity * 100).round()}%', textAlign: TextAlign.end, style: const TextStyle(fontSize: 10, color: Colors.white))),
+            ]),
+          ),
+          const SizedBox(height: 6),
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(color: Colors.white.withValues(alpha: .08), borderRadius: BorderRadius.circular(24), border: Border.all(color: Colors.white24)),
