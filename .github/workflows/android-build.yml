@@ -2,7 +2,7 @@ name: OpenLens Pro Android CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, fix/camera-preview-video-filters ]
   pull_request:
   workflow_dispatch:
 
